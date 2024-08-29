@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legal Search Application</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; }
+        h1 { color: #333; }
+        form { margin-bottom: 20px; }
+        input, button { margin: 5px 0; padding: 5px; }
+        #results { border-top: 1px solid #ddd; padding-top: 20px; }
+        .result { background: #f4f4f4; margin-bottom: 10px; padding: 10px; }
+        #error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>LEXEL</h1>
+    <form id="searchForm">
+        <input type="text" id="query" name="query" placeholder="Enter your search query" required>
+        <input type="number" id="numResults" name="numResults" placeholder="Number of results" value="5" required>
+        <button type="submit">Search</button>
+    </form>
+    <div id="error"></div>
+    <div id="results"></div>
+
+    <script>
+        $(document).ready(function() {
+            $('#searchForm').submit(function(e) {
+                e.preventDefault();
+                $('#error').html('');
+                $('#results').html('Searching...');
+                $.ajax({
+                    url: '/search',
+                    method: 'POST',
+                    data: $(this).serialize(),
+                    success: function(data) {
+                        let resultsHtml = '';
+                        data.forEach(function(result) {
+                            resultsHtml += `
+                                <div class="result">
+                                    <h3>Rank: ${result.rank}</h3>
+                                    <p>Relevance Score: ${result.relevance_score}</p>
+                                    <p>${result.text}</p>
+                                </div>
+                            `;
+                        });
+                        $('#results').html(resultsHtml);
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        $('#error').html('An error occurred: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.error : errorThrown));
+                        $('#results').html('');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
