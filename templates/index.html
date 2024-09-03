@@ -7,6 +7,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.7.570/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.1/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.10/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
     <style>
@@ -507,6 +508,8 @@
             <div class="analysisBody" id="analysisBody"></div>
         </div>
     </div>
+    <div id="loadingIndicator" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.8); color: white; padding: 10px; border-radius: 5px; z-index: 1000;">Loading...</div>
+
 
     <script>
         $(document).ready(function() {
@@ -515,6 +518,21 @@
             let ratedIssues = { good: [], bad: [] };
             let searchQuery = '';
 
+            function showLoadingIndicator() {
+                $('#loadingIndicator').show();
+            }
+
+            function hideLoadingIndicator() {
+                $('#loadingIndicator').hide();
+            }
+
+            function disableButton(button, duration) {
+                button.prop('disabled', true);
+                setTimeout(function() {
+                    button.prop('disabled', false);
+                }, duration);
+            }
+
             $('#searchForm').submit(function(e) {
                 e.preventDefault();
                 $('#error').html('');
@@ -522,6 +540,9 @@
                 $('#results').html('');
                 $('#researchButton').hide();
                 $('#loading').show();
+
+                showLoadingIndicator();
+                disableButton($('#searchForm button'), 10000);
 
                 const fileInput = $('#fileInput')[0];
                 if (fileInput.files.length > 0) {
@@ -533,6 +554,7 @@
                         }).catch(error => {
                             $('#loading').hide();
                             $('#error').html('An error occurred while reading the PDF: ' + error);
+                            hideLoadingIndicator();
                         });
                     } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
                         extractTextFromDOCX(file).then(text => {
@@ -541,10 +563,12 @@
                         }).catch(error => {
                             $('#loading').hide();
                             $('#error').html('An error occurred while reading the DOCX: ' + error);
+                            hideLoadingIndicator();
                         });
                     } else {
                         $('#loading').hide();
                         $('#error').html('Unsupported file type');
+                        hideLoadingIndicator();
                     }
                 } else {
                     searchQuery = $('#query').val();
@@ -611,11 +635,13 @@
                         currentIssueIndex = 0;
                         ratedIssues = { good: [], bad: [] };
                         displayNextLegalIssue();
+                        hideLoadingIndicator();
                     },
                     error: function(jqXHR, textStatus, errorThrown) {
                         $('#loading').hide();
                         $('#error').html('An error occurred: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.error : errorThrown));
                         $('#legalIssues').html('');
+                        hideLoadingIndicator();
                     }
                 });
             }
@@ -674,6 +700,9 @@
             });
 
             $('#researchButton').click(function() {
+                showLoadingIndicator();
+                disableButton($(this), 10000);
+
                 $.ajax({
                     url: '/research',
                     method: 'POST',
@@ -686,9 +715,11 @@
                     success: function(data) {
                         displayResults(data);
                         $('#discussButton').show();
+                        hideLoadingIndicator();
                     },
                     error: function(jqXHR, textStatus, errorThrown) {
                         $('#error').html('An error occurred during research: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.error : errorThrown));
+                        hideLoadingIndicator();
                     }
                 });
             });
@@ -712,6 +743,9 @@
             }
 
             $(document).on('click', '.case-title', function() {
+                showLoadingIndicator();
+                disableButton($(this), 10000);
+
                 const documentId = $(this).data('document-id');
                 const analysisReasoningId = $(this).data('analysis-reasoning-id');
                 $.ajax({
@@ -720,9 +754,11 @@
                     success: function(data) {
                         displayCaseDetails(data);
                         $('#popup').fadeIn(300);
+                        hideLoadingIndicator();
                     },
                     error: function(jqXHR, textStatus, errorThrown) {
                         $('#error').html('An error occurred: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.error : errorThrown));
+                        hideLoadingIndicator();
                     }
                 });
             });
@@ -774,6 +810,9 @@
             }
 
             $('#discussButton').click(function() {
+                showLoadingIndicator();
+                disableButton($(this), 10000);
+
                 let caseTitles = [];
                 $('.case-title').each(function() {
                     caseTitles.push($(this).text());
@@ -791,6 +830,7 @@
 
                 $('#caseSelectionList').html(caseSelectionHtml);
                 $('#caseSelectionPopup').fadeIn(300);
+                hideLoadingIndicator();
             });
 
             $(document).on('click', '.removeCase', function() {
@@ -802,6 +842,9 @@
             });
 
             $('.submitCaseSelection').click(function() {
+                showLoadingIndicator();
+                disableButton($(this), 10000);
+
                 let selectedCases = [];
                 $('#caseSelectionList .caseSelectionItem').each(function() {
                     selectedCases.push($(this).find('span').text());
@@ -817,9 +860,11 @@
                     }),
                     success: function(data) {
                         displayAnalysis(data);
+                        hideLoadingIndicator();
                     },
                     error: function(jqXHR, textStatus, errorThrown) {
                         $('#error').html('An error occurred during analysis: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.error : errorThrown));
+                        hideLoadingIndicator();
                     }
                 });
             });
@@ -842,6 +887,8 @@
                 $('#analysisPopup').fadeOut(300);
             });
         });
+
+
     </script>
 </body>
 </html>

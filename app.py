@@ -10,6 +10,10 @@ URI = "neo4j+s://5c45d75b.databases.neo4j.io"
 USERNAME = "neo4j"
 PASSWORD = "z_pmebMhDaH78lqd5lk_R3ye3TwjAmyaL6YxwUxLe9A"  # Replace with your actual password
 
+# URI = "bolt://localhost:7687"
+# USERNAME = "neo4j"
+# PASSWORD = "sc_graph_db"
+
 cohere_key = "RwOE11YO4Nql7aTHhOSROenzQVcuvY8WUoLZPdvb"
 cohere_client = cohere.Client(cohere_key)
 
@@ -231,66 +235,42 @@ def analyze():
     try:
         # Prepare the prompt
         prompt = f"""
-        You are tasked with preparing a comprehensive Discussion in about 4000 words based on the provided information. Your goal is to analyze the legal issue, relevant facts, and applicable case law to provide a well-reasoned legal opinion. Follow these instructions carefully:
+        You are a highly skilled legal analyst tasked with preparing a comprehensive legal analysis in about 4000 words. Your goal is to analyze a given legal issue, considering the facts and relevant Supreme Court judgments. Follow these instructions carefully to produce a well-structured, insightful legal discussion.
 
-        Review the following information:
-        <legal_issue_brief_facts>
+        First, review the following information:
+        <legal_issue>
         {search_query}
-        </legal_issue_brief_facts>
-        <legal_research>
+        </legal_issue>
+
+        <relevant_judgments>
         {cases}
-        </legal_research>
+        </relevant_judgments>
+        Now, prepare your legal memo using the following structure:
 
-        Question Presented:
-        Formulate a concise, one-sentence statement that defines how the law applies to the legal issue at hand. Ensure the question is specific, impartial, and does not assume a legal conclusion.
+        Question Presented
+        Craft a concise, one-sentence statement that defines how the law applies to the legal issue at hand. Ensure your question is specific, impartial, and does not assume a legal conclusion.
+        Discussion (in atleast 2000 words)
+        In this section, showcase your critical legal thinking skills. Organize your analysis into several paragraphs, using subsections based on the legal topics addressed. For each subsection:
 
+        a) Clearly state the relevant law and facts using active voice.
+        b) Analyze the facts under the applicable law.
+        c) Provide a critical assessment of how the court may apply the law to the matter.
+        d) Present your analysis in a logical, step-by-step manner.
+        e) Investigate and analyze the legal issue thoroughly, considering all angles.
+        Use the provided relevant Supreme Court judgments to support your analysis. When referencing a judgment, briefly explain its relevance to the current case.
 
-        Discussion:
-        
-        Present your analysis in several paragraphs, organized into subsections based on the legal topics addressed.
-        Clearly state the applicable law and the most legally significant facts, using active voice.
-        Investigate and analyze the relevant facts thoroughly.
-        Provide a critical assessment of how the court may apply the law to the matter.
-        Present your analysis in a logical, step-by-step manner.
-        Showcase your critical legal thinking skills throughout the analysis.
+        Conclusion (in about 500 words)
+        In this final section:
+        a) Impartially assess the potential outcome of the matter.
+        b) Identify any risks or unknown facts that require further investigation.
+        c) Predict how the court will likely apply the law to this case.
+        d) Indicate your level of confidence in your prediction based on the available data.
+        e) Propose next steps and a legal strategy to proceed, maintaining an impartial advisory tone.
 
-
-        Conclusion:
-
-        Impartially assess the potential outcome of the matter.
-        Identify any risks and unknown facts that require further investigation.
-        Predict how the court will likely apply the law to the facts.
-        Indicate your level of confidence in your prediction based on the available data.
-        Propose next steps and a legal strategy to proceed, maintaining an impartial advisory tone.
-
-
-        General Guidelines:
-
-        Maintain an impartial tone throughout the memo, avoiding any implied preference for one side or the other.
-        Use formal language appropriate for a legal document.
-        Assume your readers (senior advocates) are familiar with general law, so focus on the specific application to this case.
-
-
-        Output Format:
-        Present your legal memo within <legal_memo> tags, structured as follows:
-
-        <legal_memo>
-        <question_presented>
-        [Your one-sentence question presented]
-        </question_presented>
-        <discussion>
-        [Your organized analysis, with appropriate subsections]
-        </discussion>
-        <conclusion>
-        [Your impartial conclusion]
-        </conclusion>
-        </legal_memo>
-        Ensure that your Discussion is comprehensive, well-reasoned, and adheres to the structure and guidelines provided above.
+        Throughout your memo, maintain an impartial tone with no implied preference for either side. Use clear, concise language and avoid unnecessary legal jargon. Remember that your audience consists of senior advocates who are already familiar with general law, so focus on case-specific analysis rather than explaining basic legal concepts.
+        Present your entire legal memo within <legal_memo> tags. Use appropriate subsection tags for each part of your memo (e.g., <question_presented>, <discussion>, <conclusion>). Within the discussion section, use <subsection> tags to delineate different topics of analysis.
         """
 
-       
-       
-       
        
         # Use OpenAI API to generate the analysis
         client = OpenAI(api_key="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")
