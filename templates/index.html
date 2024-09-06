@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LEXEL - Legal Search Application</title>
+    <title>LEXEL - Legal Knowledge Engine</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.7.570/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.1/mammoth.browser.min.js"></script>
@@ -442,23 +442,48 @@
             padding: 1.5rem;
             overflow-y: auto;
         }
+
+        .message-box {
+            background-color: #e9f5ff;
+            border: 1px solid #b3e0ff;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+            line-height: 1.4;
+        }
+
+        .analysis-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1rem;
+        }
+        .analysis-button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+        .analysis-button:hover {
+            background-color: #264653;
+        }
     </style>
 </head>
 <body>
     <header>
         <div class="container">
             <h1>LEXEL</h1>
-            <nav>
-                <ul>
-                    <li><a href="#">Home</a></li>
-                    <li><a href="#">About</a></li>
-                    <li><a href="#">Contact</a></li>
-                </ul>
-            </nav>
         </div>
     </header>
 
     <main class="container">
+        <div id="initialMessage" class="message-box">
+            Enter any comprehensive legal issue along with necessary background and facts to perform legal research
+        </div>
         <form id="searchForm" enctype="multipart/form-data">
             <input type="text" id="query" name="query" placeholder="Enter Legal Issue" required>
             <input type="file" id="fileInput" name="file" accept=".doc,.pdf">
@@ -467,10 +492,12 @@
 
         <div id="error"></div>
         <div id="loading" style="display: none;">Loading...</div>
+        <div id="searchMessage" class="message-box" style="display: none;"></div>
         <div id="legalIssues"></div>
         <button id="researchButton" style="display: none;">Research</button>
+        <div id="researchMessage" class="message-box" style="display: none;"></div>
         <div id="results"></div>
-        <button id="discussButton">Discuss and Analyze</button>
+        <button id="discussButton">Discuss</button>
     </main>
 
     <div id="popup">
@@ -494,7 +521,11 @@
             </div>
             <div class="caseSelectionBody">
                 <ul id="caseSelectionList" class="caseSelectionList"></ul>
-                <button class="submitCaseSelection">Submit</button>
+                <div class="analysis-buttons">
+                    <button class="analysis-button" data-action="analyze">Analyze</button>
+                    <button class="analysis-button" data-action="apply">Apply</button>
+                    <button class="analysis-button" data-action="argue">Argue</button>
+                </div>
             </div>
         </div>
     </div>
@@ -517,22 +548,22 @@
             let legalIssues = [];
             let ratedIssues = { good: [], bad: [] };
             let searchQuery = '';
-
+    
             function showLoadingIndicator() {
                 $('#loadingIndicator').show();
             }
-
+    
             function hideLoadingIndicator() {
                 $('#loadingIndicator').hide();
             }
-
+    
             function disableButton(button, duration) {
                 button.prop('disabled', true);
                 setTimeout(function() {
                     button.prop('disabled', false);
                 }, duration);
             }
-
+    
             $('#searchForm').submit(function(e) {
                 e.preventDefault();
                 $('#error').html('');
@@ -540,10 +571,13 @@
                 $('#results').html('');
                 $('#researchButton').hide();
                 $('#loading').show();
+                $('#initialMessage').hide();
+
+                $('#searchMessage').html('LEXEL would present you 10 similar issues discussed by the Supreme court of India.<br><br>LEXEL benefits from your guidance and experience.<br><br>Please click on relevant if the legal issue resonates with yours, else choose not relevant and move further').show();
 
                 showLoadingIndicator();
                 disableButton($('#searchForm button'), 10000);
-
+    
                 const fileInput = $('#fileInput')[0];
                 if (fileInput.files.length > 0) {
                     const file = fileInput.files[0];
@@ -575,7 +609,7 @@
                     performSearch(searchQuery);
                 }
             });
-
+    
             function extractTextFromPDF(file) {
                 return new Promise((resolve, reject) => {
                     const fileReader = new FileReader();
@@ -606,7 +640,7 @@
                     fileReader.readAsArrayBuffer(file);
                 });
             }
-
+    
             function extractTextFromDOCX(file) {
                 return new Promise((resolve, reject) => {
                     const fileReader = new FileReader();
@@ -623,7 +657,7 @@
                     fileReader.readAsArrayBuffer(file);
                 });
             }
-
+    
             function performSearch(query) {
                 $.ajax({
                     url: '/search',
@@ -645,20 +679,20 @@
                     }
                 });
             }
-
+    
             function displayNextLegalIssue() {
                 if (currentIssueIndex < legalIssues.length) {
                     let issue = legalIssues[currentIssueIndex];
                     let issueHtml = `
                         <div class="result">
-                            <h3>Legal Issue ${currentIssueIndex + 1}</h3>
+                            <h3>Relevant legal issues discussed by the Supreme Court of India</h3>
                             <h4>Background Facts</h4>
                             <p>${issue.background_facts.replace("\\n", " ")}</p>
                             <h4>Legal Issue</h4>
                             <p>${issue.text.replace("\\n", " ")}</p>
                             <div class="rating-buttons">
-                                <button class="rating-button" data-rating="-1">Not Relevant (-1)</button>
-                                <button class="rating-button" data-rating="1">Relevant (+1)</button>
+                                <button class="rating-button" data-rating="-1">Not Relevant</button>
+                                <button class="rating-button" data-rating="1">Relevant</button>
                             </div>
                         </div>
                     `;
@@ -668,11 +702,11 @@
                     $('#researchButton').show();
                 }
             }
-
+    
             $(document).on('click', '.rating-button', function() {
                 let rating = $(this).data('rating');
                 let currentIssue = legalIssues[currentIssueIndex];
-
+    
                 $.ajax({
                     url: '/rate_issue',
                     method: 'POST',
@@ -686,7 +720,7 @@
                         } else {
                             ratedIssues.bad.push(currentIssue.id);
                         }
-
+    
                         currentIssueIndex++;
                         if (currentIssueIndex % 3 === 0) {
                             $('#researchButton').show();
@@ -698,11 +732,14 @@
                     }
                 });
             });
-
+    
             $('#researchButton').click(function() {
                 showLoadingIndicator();
                 disableButton($(this), 10000);
 
+                $('#researchMessage').html('Below are excerpts from the summary of the relevant cases.<br>For detailed research, kindly consider clicking on the case title and LEXEL would present you with the case summary and the actual case text along with highlighted paragraphs').show();
+
+    
                 $.ajax({
                     url: '/research',
                     method: 'POST',
@@ -723,7 +760,7 @@
                     }
                 });
             });
-
+    
             function displayResults(data) {
                 let resultsHtml = '';
                 data.forEach(function(result) {
@@ -741,11 +778,11 @@
                 });
                 $('#results').html(resultsHtml);
             }
-
+    
             $(document).on('click', '.case-title', function() {
                 showLoadingIndicator();
                 disableButton($(this), 10000);
-
+    
                 const documentId = $(this).data('document-id');
                 const analysisReasoningId = $(this).data('analysis-reasoning-id');
                 $.ajax({
@@ -762,16 +799,16 @@
                     }
                 });
             });
-
+    
             $('.close-popup').click(function() {
                 $('#popup').fadeOut(300);
             });
-
+    
             function displayCaseDetails(data) {
                 $('#popup-title').text(data.case_title);
                 let summaryHtml = '<h3>Case Summary</h3>';
                 let textHtml = '<h3>Case Text</h3>';
-
+    
                 // Display summary
                 const summaryOrder = ['background_facts', 'legal_issues', 'arguments', 'analysis_reasoning', 'decision_order', 'dissenting_concurring_opinions'];
                 summaryOrder.forEach(section => {
@@ -792,7 +829,7 @@
                         }
                     }
                 });
-
+    
                 data.text.forEach(paragraph => {
                     if (paragraph.highlight) {
                         textHtml += `<p class="highlight"><strong>${paragraph.number}.</strong> ${processText(paragraph.text)}</p>`;
@@ -800,55 +837,52 @@
                         textHtml += `<p><strong>${paragraph.number}.</strong> ${processText(paragraph.text)}</p>`;
                     }
                 });
-
+    
                 $('#case-summary').html(summaryHtml);
                 $('#case-text').html(textHtml);
             }
-
+    
             function processText(text) {
                 return text.replace(/\\n/g, '<br>');
             }
-
+    
             $('#discussButton').click(function() {
                 showLoadingIndicator();
                 disableButton($(this), 10000);
-
-                let caseTitles = [];
-                $('.case-title').each(function() {
-                    caseTitles.push($(this).text());
-                });
-
+    
                 let caseSelectionHtml = '';
-                caseTitles.forEach(title => {
+                $('.case-title').each(function() {
                     caseSelectionHtml += `
-                        <li class="caseSelectionItem">
-                            <span>${title}</span>
-                            <button class="removeCase" data-title="${title}">&times;</button>
+                        <li class="caseSelectionItem" data-document-id="${$(this).data('document-id')}">
+                            <span>${$(this).text()}</span>
+                            <button class="removeCase" data-document-id="${$(this).data('document-id')}">&times;</button>
                         </li>
                     `;
                 });
-
+    
                 $('#caseSelectionList').html(caseSelectionHtml);
                 $('#caseSelectionPopup').fadeIn(300);
                 hideLoadingIndicator();
             });
-
+    
             $(document).on('click', '.removeCase', function() {
                 $(this).parent().remove();
             });
-
+    
             $('.closeCaseSelection').click(function() {
                 $('#caseSelectionPopup').fadeOut(300);
             });
-
-            $('.submitCaseSelection').click(function() {
+    
+            $('.analysis-button').click(function() {
                 showLoadingIndicator();
                 disableButton($(this), 10000);
 
-                let selectedCases = [];
+                let selectedDocumentIds = [];
                 $('#caseSelectionList .caseSelectionItem').each(function() {
-                    selectedCases.push($(this).find('span').text());
+                    selectedDocumentIds.push($(this).data('document-id'));
                 });
+
+                let action = $(this).data('action');
 
                 $.ajax({
                     url: '/analyze',
@@ -856,7 +890,8 @@
                     contentType: 'application/json',
                     data: JSON.stringify({
                         query: searchQuery,
-                        cases: selectedCases
+                        document_ids: selectedDocumentIds,
+                        action: action
                     }),
                     success: function(data) {
                         displayAnalysis(data);
@@ -868,27 +903,26 @@
                     }
                 });
             });
-
+    
             function displayAnalysis(data) {
                 $('#analysisBody').html('');
                 $('#analysisPopup').fadeIn(300);
-
-                let formattedResponse = '';
+    
+                let formattedResponse = '<div class="message-box">LEXEL presents you with a comprehensive discussion addressing your legal issue in the form of a detailed legal analysis</div>';
                 data.forEach(chunk => {
                     if (chunk.choices[0].delta.content) {
                         formattedResponse += chunk.choices[0].delta.content;
                     }
                 });
-
+    
                 $('#analysisBody').html(formattedResponse);
             }
-
+    
             $('.closeAnalysis').click(function() {
                 $('#analysisPopup').fadeOut(300);
             });
         });
-
-
     </script>
+    
 </body>
 </html>

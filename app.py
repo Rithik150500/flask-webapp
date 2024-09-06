@@ -47,7 +47,7 @@ def get_related_documents_good(tx, legal_issue_ids):
     MATCH (li)-[:SUMMARIZES]->(doc:Document)
     WITH COLLECT(DISTINCT doc) AS docs
     UNWIND docs AS main_doc
-    OPTIONAL MATCH (main_doc)-[:CITES]->(cited_doc:Document)
+    OPTIONAL MATCH (main_doc)-[:CITES]-(cited_doc:Document)
     RETURN COLLECT(DISTINCT id(main_doc)) + COLLECT(DISTINCT id(cited_doc)) AS all_doc_ids
     """
     result = tx.run(query, legal_issue_ids=legal_issue_ids)
@@ -115,6 +115,38 @@ def get_case_text(tx, document_id, analysis_reasoning_id):
     """
     result = tx.run(query, document_id=document_id, analysis_reasoning_id=analysis_reasoning_id)
     return [{"text": record["text"], "number": record["number"], "highlight": record["highlight"]} for record in result]
+
+
+def get_multiple_case_summaries(tx, document_ids):
+    query = """
+    MATCH (d:Document)
+    WHERE id(d) IN $document_ids
+    OPTIONAL MATCH (d)<-[:SUMMARIZES]-(bf:Background_facts)
+    OPTIONAL MATCH (d)<-[:SUMMARIZES]-(li:Legal_issues)
+    OPTIONAL MATCH (d)<-[:SUMMARIZES]-(arg:Arguments)
+    OPTIONAL MATCH (d)<-[:SUMMARIZES]-(ar:Analysis_reasoning)
+    OPTIONAL MATCH (d)<-[:SUMMARIZES]-(do:Decision_order)
+    OPTIONAL MATCH (d)<-[:SUMMARIZES]-(dco:Dissenting_concurring_opinions)
+    WITH d, bf, do,
+        COLLECT(DISTINCT {text: li.final_text, index: coalesce(li.index, 0)}) AS legal_issues,
+        COLLECT(DISTINCT {text: arg.final_text, index: coalesce(arg.index, 0)}) AS arguments,
+        COLLECT(DISTINCT {text: ar.final_text, index: coalesce(ar.index, 0)}) AS analysis_reasoning,
+        COLLECT(DISTINCT {text: dco.final_text, index: coalesce(dco.index, 0)}) AS dissenting_concurring
+    RETURN {
+        document_id: id(d),
+        case_title: d.case_title,
+        background_facts: bf.final_text,
+        legal_issues: [issue IN legal_issues WHERE issue.text IS NOT NULL | issue.text],
+        arguments: [arg IN arguments WHERE arg.text IS NOT NULL | arg.text],
+        analysis_reasoning: [ar IN analysis_reasoning WHERE ar.text IS NOT NULL | ar.text],
+        decision_order: do.final_text,
+        dissenting_concurring: [dco IN dissenting_concurring WHERE dco.text IS NOT NULL | dco.text]
+    } AS summary
+    """
+    result = tx.run(query, document_ids=document_ids)
+    return [record["summary"] for record in result]
+
+
 
 @app.route('/')
 def index():
@@ -227,51 +259,48 @@ def case_details(document_id, analysis_reasoning_id):
 @app.route('/analyze', methods=['POST'])
 def analyze():
     search_query = request.json.get('query', '')
-    cases = request.json.get('cases', [])
+    document_ids = request.json.get('document_ids', [])
+    action = request.json.get('action', '')
 
-    if not search_query or not cases:
-        return jsonify({"error": "Missing search query or cases"}), 400
+    if not search_query or not document_ids or not action:
+        return jsonify({"error": "Missing search query, document IDs, or action"}), 400
 
     try:
-        # Prepare the prompt
-        prompt = f"""
-        You are a highly skilled legal analyst tasked with preparing a comprehensive legal analysis in about 4000 words. Your goal is to analyze a given legal issue, considering the facts and relevant Supreme Court judgments. Follow these instructions carefully to produce a well-structured, insightful legal discussion.
+        # Connect to Neo4j and get case summaries
+        with GraphDatabase.driver(URI, auth=(USERNAME, PASSWORD)) as driver:
+            with driver.session() as session:
+                summaries = session.execute_read(get_multiple_case_summaries, document_ids)
 
-        First, review the following information:
-        <legal_issue>
-        {search_query}
-        </legal_issue>
+        # Prepare the cases summary
+        cases = "\n".join([f"<{summary['case_title']}>\n{summary['background_facts']}\n{summary['legal_issues']}\n{summary['arguments']}\n{summary['analysis_reasoning']}\n{summary['decision_order']}\n{summary['dissenting_concurring']}\n</{summary['case_title']}>" for summary in summaries])
 
-        <relevant_judgments>
-        {cases}
-        </relevant_judgments>
-        Now, prepare your legal memo using the following structure:
+        print(cases)
 
-        Question Presented
-        Craft a concise, one-sentence statement that defines how the law applies to the legal issue at hand. Ensure your question is specific, impartial, and does not assume a legal conclusion.
-        Discussion (in atleast 2000 words)
-        In this section, showcase your critical legal thinking skills. Organize your analysis into several paragraphs, using subsections based on the legal topics addressed. For each subsection:
+        # Select the appropriate prompt based on the action
+        if action == 'analyze':
+            prompt = f"""
+            Analyze the legal issue and provide a concise legal opinion based on relevant Supreme Court judgments.
+            User Query: {search_query}
+            Relevant Judgments: {cases}
+            Summarize the key legal principles from the relevant Supreme Court judgments and explain their application to the given scenario.
+            """
+        elif action == 'apply':
+            prompt = f"""
+            Apply the legal principles to the given scenario based on relevant Supreme Court judgments.
+            User Query: {search_query}
+            Relevant Judgments: {cases}
+            Summarize the key legal principles from the relevant Supreme Court judgments and explain their application to the given scenario.
+            """
+        elif action == 'argue':
+            prompt = f"""
+            Identify potential legal arguments and counterarguments for the given case based on relevant Supreme Court judgments.
+            User Query: {search_query}
+            Relevant Judgments: {cases}
+            Provide a balanced analysis of arguments for both sides of the case, referencing relevant legal principles and precedents.
+            """
+        else:
+            return jsonify({"error": "Invalid action"}), 400
 
-        a) Clearly state the relevant law and facts using active voice.
-        b) Analyze the facts under the applicable law.
-        c) Provide a critical assessment of how the court may apply the law to the matter.
-        d) Present your analysis in a logical, step-by-step manner.
-        e) Investigate and analyze the legal issue thoroughly, considering all angles.
-        Use the provided relevant Supreme Court judgments to support your analysis. When referencing a judgment, briefly explain its relevance to the current case.
-
-        Conclusion (in about 500 words)
-        In this final section:
-        a) Impartially assess the potential outcome of the matter.
-        b) Identify any risks or unknown facts that require further investigation.
-        c) Predict how the court will likely apply the law to this case.
-        d) Indicate your level of confidence in your prediction based on the available data.
-        e) Propose next steps and a legal strategy to proceed, maintaining an impartial advisory tone.
-
-        Throughout your memo, maintain an impartial tone with no implied preference for either side. Use clear, concise language and avoid unnecessary legal jargon. Remember that your audience consists of senior advocates who are already familiar with general law, so focus on case-specific analysis rather than explaining basic legal concepts.
-        Present your entire legal memo within <legal_memo> tags. Use appropriate subsection tags for each part of your memo (e.g., <question_presented>, <discussion>, <conclusion>). Within the discussion section, use <subsection> tags to delineate different topics of analysis.
-        """
-
-       
         # Use OpenAI API to generate the analysis
         client = OpenAI(api_key="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")
         stream = client.chat.completions.create(
@@ -289,6 +318,7 @@ def analyze():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)
