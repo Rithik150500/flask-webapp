@@ -9,8 +9,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.1/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.10/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/intro.js/minified/introjs.min.css">
+    <script src="https://unpkg.com/intro.js/minified/intro.min.js"></script>
 
     <style>
+
+        
         :root {
             --primary-color: #004080;
             --secondary-color: #2a9d8f;
@@ -471,6 +475,142 @@
         .analysis-button:hover {
             background-color: #264653;
         }
+
+        #userManualPopup {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 2000;
+        }
+        #userManualContent {
+            position: relative;
+            width: 80%;
+            max-width: 800px;
+            margin: 50px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-y: auto;
+            max-height: 80%;
+        }
+        #userManualContent h2 {
+            margin-top: 0;
+        }
+        #userManualContent button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #333;
+        }
+
+        #downloadCaseTextButton {
+            padding: 10px 20px;
+            font-size: 1rem;
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #downloadCaseTextButton:hover {
+            background-color: #264653;
+        }
+
+        /* Make the textarea full-width and block */
+        textarea#query {
+            width: 100%; /* Full width of the container */
+            min-height: 200px; /* Minimum height */
+            padding: 15px;
+            font-size: 1.2rem;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px var(--shadow-color);
+            resize: vertical; /* Vertical resizing */
+            overflow-y: auto; /* Scrollable content if necessary */
+            display: block; /* Ensure it's a block element */
+            margin-bottom: 20px; /* Add space below */
+        }
+
+        /* Ensure the input file is also displayed below the textarea */
+        input#fileInput {
+            display: block;
+            margin: 10px 0; /* Space between file input and textarea */
+        }
+
+        /* Ensure the buttons are stacked vertically */
+        .search-options {
+            display: block; /* Ensures the buttons are displayed in a block format */
+            text-align: center; /* Center the buttons */
+        }
+
+        .search-options button {
+            padding: 15px 20px;
+            font-size: 1.2rem;
+            background-color: var(--accent-color);
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px var(--shadow-color);
+            margin: 10px 0; /* Add margin between the buttons to separate them vertically */
+            width: 200px; /* Fixed width for buttons */
+            display: inline-block;
+        }
+
+        .search-options button:hover {
+            background-color: #d4af37;
+        }
+
+
+        .result-card {
+            height: 400px; /* Set constant height */
+            overflow: hidden;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+        }
+
+        .card-content {
+            display: flex;
+            height: calc(100% - 80px); /* Adjust based on header height */
+        }
+
+        .left-half, .right-half {
+            width: 50%;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .scrollable {
+            scrollbar-width: thin;
+            scrollbar-color: #888 #ccc;
+        }
+
+        .scrollable::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .scrollable::-webkit-scrollbar-thumb {
+            background: #888;
+        }
+
+        .scrollable::-webkit-scrollbar-track {
+            background: #ccc;
+        }
+
+
+
+
     </style>
 </head>
 <body>
@@ -485,10 +625,16 @@
             Enter any comprehensive legal issue along with necessary background and facts to perform legal research
         </div>
         <form id="searchForm" enctype="multipart/form-data">
-            <input type="text" id="query" name="query" placeholder="Enter Legal Issue" required>
+            <textarea id="query" name="query" placeholder="Enter Legal Issue" required></textarea>
             <input type="file" id="fileInput" name="file" accept=".doc,.pdf">
-            <button type="submit"><i class="fas fa-search"></i> Search</button>
+            <!-- Ensure the buttons are displayed below the textarea -->
+            <div class="search-options">
+                <button type="submit" name="action" value="lexplore"><i class="fas fa-search"></i> Lexplore</button>
+            </div>
         </form>
+        
+        
+        
 
         <div id="error"></div>
         <div id="loading" style="display: none;">Loading...</div>
@@ -498,6 +644,7 @@
         <div id="researchMessage" class="message-box" style="display: none;"></div>
         <div id="results"></div>
         <button id="discussButton">Discuss</button>
+        <button id="coCounselButton">CoCounsel</button>
     </main>
 
     <div id="popup">
@@ -540,7 +687,32 @@
         </div>
     </div>
     <div id="loadingIndicator" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.8); color: white; padding: 10px; border-radius: 5px; z-index: 1000;">Loading...</div>
-
+    <div id="userManualPopup">
+        <div id="userManualContent">
+            <button id="closeUserManual">&times;</button>
+            <h2>Welcome to LEXEL - Legal Knowledge Engine</h2>
+            <p>LEXEL is an advanced legal research tool designed to assist you in analyzing legal issues using relevant Supreme Court judgments of India.</p>
+            <h3>How to Use LEXEL:</h3>
+            <ol>
+                <li><strong>Enter Legal Issue:</strong> Input a comprehensive legal issue along with necessary background and facts in the search bar.</li>
+                <li><strong>Upload Documents (Optional):</strong> You can upload a PDF or DOCX file containing the legal issue for analysis.</li>
+                <li><strong>Search:</strong> Click on the search button to find relevant legal issues discussed by the Supreme Court.</li>
+                <li><strong>Rate Issues:</strong> LEXEL will present you with similar legal issues. Rate them as 'Relevant' or 'Not Relevant' based on their resonance with your query.</li>
+                <li><strong>Research:</strong> After rating, click on 'Research' to get excerpts from summaries of relevant cases.</li>
+                <li><strong>View Case Details:</strong> Click on a case title to view the case summary and the actual case text with highlighted paragraphs.</li>
+                <li><strong>Discuss:</strong> Use the 'Discuss' button to select cases for detailed analysis. Choose from options like 'Analyze', 'Apply', or 'Argue' to get tailored insights.</li>
+            </ol>
+            <h3>Features:</h3>
+            <ul>
+                <li><strong>Interactive Search:</strong> Find legal issues similar to your query and refine results through ratings.</li>
+                <li><strong>Detailed Case Summaries:</strong> Access summaries and full texts of Supreme Court judgments.</li>
+                <li><strong>Customized Analysis:</strong> Obtain legal opinions, applications of law to your scenario, or arguments and counterarguments based on selected cases.</li>
+                <li><strong>User Engagement:</strong> Interactive elements keep you engaged throughout your research process.</li>
+            </ul>
+            <h3>Get Started Now!</h3>
+            <p>Close this guide to begin your legal research journey with LEXEL.</p>
+        </div>
+    </div>
 
     <script>
         $(document).ready(function() {
@@ -573,7 +745,9 @@
                 $('#loading').show();
                 $('#initialMessage').hide();
 
-                $('#searchMessage').html('LEXEL would present you 10 similar issues discussed by the Supreme court of India.<br><br>LEXEL benefits from your guidance and experience.<br><br>Please click on relevant if the legal issue resonates with yours, else choose not relevant and move further').show();
+                $('#searchMessage').html('LEXEL would present you similar issues discussed by the Supreme court of India.<br><br>LEXEL benefits from your guidance and experience.<br><br>Please click on relevant if the legal issue resonates with yours, else choose not relevant and move further').show();
+
+                const action = $(this).find('button[name="action"][type="submit"]:focus').val();
 
                 showLoadingIndicator();
                 disableButton($('#searchForm button'), 10000);
@@ -584,7 +758,7 @@
                     if (file.type === 'application/pdf') {
                         extractTextFromPDF(file).then(text => {
                             searchQuery = text;
-                            performSearch(text);
+                            performSearch(text, action);
                         }).catch(error => {
                             $('#loading').hide();
                             $('#error').html('An error occurred while reading the PDF: ' + error);
@@ -593,7 +767,7 @@
                     } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
                         extractTextFromDOCX(file).then(text => {
                             searchQuery = text;
-                            performSearch(text);
+                            performSearch(text, action);
                         }).catch(error => {
                             $('#loading').hide();
                             $('#error').html('An error occurred while reading the DOCX: ' + error);
@@ -606,7 +780,7 @@
                     }
                 } else {
                     searchQuery = $('#query').val();
-                    performSearch(searchQuery);
+                    performSearch(searchQuery, action);
                 }
             });
     
@@ -658,17 +832,17 @@
                 });
             }
     
-            function performSearch(query) {
+            function performSearch(query, action) {
                 $.ajax({
                     url: '/search',
                     method: 'POST',
                     data: { query: query },
                     success: function(data) {
                         $('#loading').hide();
-                        legalIssues = data;
-                        currentIssueIndex = 0;
-                        ratedIssues = { good: [], bad: [] };
-                        displayNextLegalIssue();
+                        // Since the backend now returns the final results,
+                        // we directly call displayResults with the data
+                        displayResults(data);
+                        $('#discussButton').show();
                         hideLoadingIndicator();
                     },
                     error: function(jqXHR, textStatus, errorThrown) {
@@ -679,13 +853,40 @@
                     }
                 });
             }
+
+
+            // Perform research directly if the user selects Quick Research
+            function performResearch() {
+                showLoadingIndicator();
+                $('#researchMessage').html('Below are excerpts from the summary of the relevant cases.<br>For detailed research, kindly consider clicking on the case title and LEXEL would present you with the case summary and the actual case text along with highlighted paragraphs').show();
+
+                $.ajax({
+                    url: '/research',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        good_issues: ratedIssues.good,
+                        bad_issues: ratedIssues.bad,
+                        query: searchQuery
+                    }),
+                    success: function(data) {
+                        displayResults(data);
+                        $('#discussButton').show();
+                        hideLoadingIndicator();
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        $('#error').html('An error occurred during research: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.error : errorThrown));
+                        hideLoadingIndicator();
+                    }
+                });
+            }
     
             function displayNextLegalIssue() {
                 if (currentIssueIndex < legalIssues.length) {
                     let issue = legalIssues[currentIssueIndex];
                     let issueHtml = `
                         <div class="result">
-                            <h3>Relevant legal issues discussed by the Supreme Court of India</h3>
+                            <h3>Case Title: ${issue.case_title}</h3>
                             <h4>Background Facts</h4>
                             <p>${issue.background_facts.replace("\\n", " ")}</p>
                             <h4>Legal Issue</h4>
@@ -698,15 +899,15 @@
                     `;
                     $('#legalIssues').html(issueHtml);
                 } else {
-                    $('#legalIssues').html('<p>No more legal issues to rate.</p>');
-                    $('#researchButton').show();
+                    fetchMoreLegalIssues();
                 }
             }
+
     
             $(document).on('click', '.rating-button', function() {
                 let rating = $(this).data('rating');
                 let currentIssue = legalIssues[currentIssueIndex];
-    
+
                 $.ajax({
                     url: '/rate_issue',
                     method: 'POST',
@@ -720,9 +921,9 @@
                         } else {
                             ratedIssues.bad.push(currentIssue.id);
                         }
-    
+
                         currentIssueIndex++;
-                        if (currentIssueIndex % 3 === 0) {
+                        if (ratedIssues.good.length + ratedIssues.bad.length >= 5) {
                             $('#researchButton').show();
                         }
                         displayNextLegalIssue();
@@ -732,6 +933,31 @@
                     }
                 });
             });
+
+            function fetchMoreLegalIssues() {
+                showLoadingIndicator();
+                $.ajax({
+                    url: '/fetch_more_issues',
+                    method: 'POST',
+                    data: { query: searchQuery, start_index: legalIssues.length },
+                    success: function(data) {
+                        hideLoadingIndicator();
+                        if (data.length > 0) {
+                            legalIssues = legalIssues.concat(data);
+                            displayNextLegalIssue();
+                        } else {
+                            $('#legalIssues').html('<p>No more legal issues to rate.</p>');
+                            if (ratedIssues.good.length + ratedIssues.bad.length >= 5) {
+                                $('#researchButton').show();
+                            }
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        hideLoadingIndicator();
+                        $('#error').html('An error occurred: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.error : errorThrown));
+                    }
+                });
+            }
     
             $('#researchButton').click(function() {
                 showLoadingIndicator();
@@ -761,23 +987,38 @@
                 });
             });
     
+            function processText(text) {
+                return text.replace(/\\n/g, '<br>');
+            }
+
+
             function displayResults(data) {
                 let resultsHtml = '';
                 data.forEach(function(result) {
                     resultsHtml += `
-                        <div class="result">
-                            <h3 class="case-title" data-document-id="${result.document_id}" data-analysis-reasoning-id="${result.analysis_reasoning_id}">${result.case_title}</h3>
-                            <p class="relevance-score">Lexcore: ${result.relevance_score}</p>
-                            <p>${processText(result.text)}</p>
-                            <div class="cited-cases">
+                        <div class="result-card">
+                            <h3 class="case-title" data-document-id="${result.document_id}" data-analysis-reasoning-id="${result.analysis_reasoning_id}">
+                                ${result.case_title}
+                            </h3>
+                            <p class="lexcore">Lexcore: ${result.relevance_score.toFixed(2)}</p>
+                            <div class="card-content">
+                                <div class="left-half scrollable">
+                                    <p>${processText(result.analysis_reasoning_text)}</p>
+                                </div>
+                                <div class="right-half scrollable">
+                                    <p>${processText(result.paragraph_text)}</p>
+                                </div>
+                            </div>
+                            <div class="cases-referred">
                                 <strong>Cases Referred:</strong>
-                                ${result.cited_docs.map(doc => `<span class="cited-case case-title" data-document-id="${doc.id}" data-analysis-reasoning-id="${result.analysis_reasoning_id}">${doc.title}</span>`).join('')}
+                                ${result.cited_docs.map(doc => `<span class="cited-case" data-document-id="${doc.id}">${doc.title}</span>`).join(', ')}
                             </div>
                         </div>
                     `;
                 });
                 $('#results').html(resultsHtml);
             }
+
     
             $(document).on('click', '.case-title', function() {
                 showLoadingIndicator();
@@ -805,9 +1046,16 @@
             });
     
             function displayCaseDetails(data) {
-                $('#popup-title').text(data.case_title);
+                $('#popup-title').text(data.summary.case_title);
+                const documentId = data.document_id;
+                const analysisReasoningId = data.analysis_reasoning_id;
+
                 let summaryHtml = '<h3>Case Summary</h3>';
-                let textHtml = '<h3>Case Text</h3>';
+                let textHtml = `<h3 style="display: flex; justify-content: space-between; align-items: center;">
+                                    Case Text
+                                    <button id="downloadCaseTextButton">Download Case Text</button>
+                                </h3>`;
+
     
                 // Display summary
                 const summaryOrder = ['background_facts', 'legal_issues', 'arguments', 'analysis_reasoning', 'decision_order', 'dissenting_concurring_opinions'];
@@ -840,6 +1088,11 @@
     
                 $('#case-summary').html(summaryHtml);
                 $('#case-text').html(textHtml);
+
+                // Set up click handler for the download button
+                $('#downloadCaseTextButton').click(function() {
+                    window.location.href = `/download_case_text/${documentId}/${analysisReasoningId}`;
+                });
             }
     
             function processText(text) {
@@ -908,7 +1161,7 @@
                 $('#analysisBody').html('');
                 $('#analysisPopup').fadeIn(300);
     
-                let formattedResponse = '<div class="message-box">LEXEL presents you with a comprehensive discussion addressing your legal issue in the form of a detailed legal analysis</div>';
+                let formattedResponse = '';
                 data.forEach(chunk => {
                     if (chunk.choices[0].delta.content) {
                         formattedResponse += chunk.choices[0].delta.content;
@@ -921,6 +1174,52 @@
             $('.closeAnalysis').click(function() {
                 $('#analysisPopup').fadeOut(300);
             });
+
+            $('#userManualPopup').fadeIn(300);
+            // Close the user manual popup
+            $('#closeUserManual').click(function() {
+                $('#userManualPopup').fadeOut(300);
+            });
+
+            $('#coCounselButton').click(function() {
+                // Store searchQuery and cases in localStorage
+                const searchQuery = $('#query').val();
+
+                // Collect cases from the results section
+                let cases = [];
+
+                // Main cases
+                $('.case-title').each(function() {
+                    const documentId = $(this).data('document-id');
+                    const caseTitle = $(this).text();
+                    cases.push({ document_id: documentId, case_title: caseTitle });
+                });
+
+                // Cases referred (cited cases)
+                $('.cited-case').each(function() {
+                    const documentId = $(this).data('document-id');
+                    const caseTitle = $(this).text();
+                    cases.push({ document_id: documentId, case_title: caseTitle });
+                });
+
+                // Remove duplicates based on document_id
+                let uniqueCases = [];
+                let caseIds = new Set();
+                cases.forEach(function(caseItem) {
+                    if (!caseIds.has(caseItem.document_id)) {
+                        caseIds.add(caseItem.document_id);
+                        uniqueCases.push(caseItem);
+                    }
+                });
+
+                // Store in localStorage
+                localStorage.setItem('cocounsel_search_query', searchQuery);
+                localStorage.setItem('cocounsel_selected_cases', JSON.stringify(uniqueCases));
+
+                // Navigate to /cocounsel
+                window.location.href = '/cocounsel';
+            });
+
         });
     </script>
     

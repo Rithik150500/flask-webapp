@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CoCounsel - LEXEL</title>
+    <!-- Meta tags for responsiveness -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Include Google Fonts for readability -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
+
+    <!-- Base CSS Styles -->
+    <style>
+        /* Base Styles */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #fafafa;
+            color: #333;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        #header {
+            text-align: center;
+            padding: 20px;
+            background-color: #007bff;
+            color: #fff;
+        }
+
+        #header h1 {
+            font-size: 36px;
+            font-weight: bold;
+        }
+
+        /* Input Container */
+        #input-container {
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            background-color: #fff;
+        }
+
+        #dispute-input {
+            width: 60%;
+            height: 150px;
+            border-radius: 20px;
+            border: 1px solid #ccc;
+            padding: 15px;
+            font-size: 16px;
+            resize: none;
+            outline: none;
+        }
+
+        /* Lexplore Button */
+        #lexplore-button {
+            display: block;
+            margin: 20px auto;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #lexplore-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        #lexplore-button:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+
+        /* Main Content */
+        #main-content {
+            display: none;
+            flex: 1;
+            display: flex;
+            height: calc(100vh - 180px); /* Adjust height based on header and input */
+        }
+
+        /* Left and Right Sections */
+        #left-section, #right-section {
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        #left-section {
+            width: 66.66%;
+            border-right: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #right-section {
+            width: 33.33%;
+            background-color: #fafafa;
+            padding: 20px;
+        }
+
+        /* Loading Indicator */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            font-size: 24px;
+            color: #555;
+        }
+
+        /* Chat Interface */
+        #chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        #chat-window {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 10px;
+            background-color: #fff;
+        }
+
+        .message {
+            display: flex;
+            margin-bottom: 15px;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.assistant {
+            justify-content: flex-start;
+        }
+
+        .message .bubble {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 20px;
+            position: relative;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .message.user .bubble {
+            background-color: #007bff;
+            color: #fff;
+            border-bottom-right-radius: 0;
+        }
+
+        .message.assistant .bubble {
+            background-color: #e5e5ea;
+            color: #000;
+            border-bottom-left-radius: 0;
+        }
+
+        /* Chat Input */
+        #chat-input {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background-color: #fff;
+            border-top: 1px solid #ccc;
+        }
+
+        #chat-input textarea {
+            flex-grow: 1;
+            resize: none;
+            border: none;
+            padding: 10px;
+            border-radius: 20px;
+            background-color: #f1f0f0;
+            font-size: 16px;
+            outline: none;
+            max-height: 150px;
+        }
+
+        #chat-input button {
+            margin-left: 10px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            border: none;
+            border-radius: 20px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #chat-input button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        #chat-input button:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+
+        /* Right Section Content */
+        .section {
+            padding: 15px 0;
+            border-bottom: 1px solid #ccc;
+            cursor: pointer;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .section h2 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            color: #007bff;
+        }
+
+        .section .content {
+            color: #555;
+        }
+
+        .section .content p {
+            margin-bottom: 5px;
+        }
+
+        /* Document Preview */
+        #document-preview {
+            padding: 20px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            position: relative;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+
+        #document-preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        #document-preview-header h2 {
+            margin: 0;
+            font-size: 24px;
+            color: #007bff;
+        }
+
+        #close-preview-button {
+            cursor: pointer;
+            font-size: 24px;
+            background: none;
+            border: none;
+            color: #aaa;
+            transition: color 0.3s;
+        }
+
+        #close-preview-button:hover {
+            color: #000;
+        }
+
+        /* Smooth transitions */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 800px) {
+            #main-content {
+                flex-direction: column;
+            }
+
+            #left-section, #right-section {
+                width: 100%;
+                height: 50%;
+            }
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #aaa;
+        }
+
+        /* Popup Styles */
+        #case-popup {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        #case-popup .popup-content {
+            background: #fff;
+            width: 80%;
+            height: 80%;
+            display: flex;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #case-popup #popup-left, #case-popup #popup-right {
+            width: 50%;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        #case-popup #popup-left {
+            border-right: 1px solid #ccc;
+        }
+
+        #close-popup {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 30px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #aaa;
+            transition: color 0.3s;
+        }
+
+        #close-popup:hover {
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div id="header">
+        <h1>CoCounsel</h1>
+    </div>
+
+    <!-- Input Container -->
+    <div id="input-container">
+        <textarea id="dispute-input" placeholder="Enter a legal dispute"></textarea>
+    </div>
+
+    <!-- Lexplore Button -->
+    <button id="lexplore-button" disabled>Lexplore</button>
+
+    <!-- Main Content -->
+    <div id="main-content">
+        <!-- Left Section -->
+        <div id="left-section">
+            <!-- Chat Interface will be injected here -->
+        </div>
+        <!-- Right Section -->
+        <div id="right-section">
+            <!-- Dispute, Legal Research, and Research Memo will be displayed here -->
+        </div>
+    </div>
+
+    <!-- Case Popup -->
+    <div id="case-popup">
+        <div class="popup-content">
+            <!-- Left Section: Case Summary -->
+            <div id="popup-left">
+                <h2>Case Summary</h2>
+                <div id="case-summary"></div>
+            </div>
+            <!-- Right Section: Case Text -->
+            <div id="popup-right">
+                <h2>Case Text</h2>
+                <div id="case-text"></div>
+            </div>
+            <!-- Close Button -->
+            <button id="close-popup">&times;</button>
+        </div>
+    </div>
+
+    <!-- JavaScript Code -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let disputeText = '';
+            let conversation = []; // Initialize empty conversation
+            let currentResponseData = null; // Higher scope variable for responseData
+
+            // Enable Lexplore button when there is text
+            document.getElementById('dispute-input').addEventListener('input', function() {
+                const text = this.value.trim();
+                document.getElementById('lexplore-button').disabled = text.length === 0;
+            });
+
+            // Handle Lexplore button click
+            document.getElementById('lexplore-button').addEventListener('click', function() {
+                disputeText = document.getElementById('dispute-input').value.trim();
+                if (disputeText.length === 0) {
+                    alert('Please enter a legal dispute.');
+                    return;
+                }
+
+                // Hide the initial elements
+                document.getElementById('header').style.display = 'none';
+                document.getElementById('input-container').style.display = 'none';
+                document.getElementById('lexplore-button').style.display = 'none';
+
+                // Show the main content
+                document.getElementById('main-content').style.display = 'flex';
+
+                // Display loading indicators in both sections
+                document.getElementById('left-section').innerHTML = '<div class="loading">Setting up your workspace</div>';
+                document.getElementById('right-section').innerHTML = '<div class="loading">Analyzing the dispute</div>';
+
+                // Send AJAX request to backend to process dispute
+                fetch('/process_dispute', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ dispute: disputeText }),
+                })
+                .then(response => response.json())
+                .then(responseData => {
+                    if (responseData.error) {
+                        alert(responseData.error);
+                        // Optionally, reset the UI
+                        resetUI();
+                        return;
+                    }
+
+                    // Assign responseData to the higher scope variable
+                    currentResponseData = responseData;
+
+                    // Initialize conversation with initial_conversation
+                    conversation = responseData.initial_conversation;
+
+                    // Update the left section to display the chat interface
+                    document.getElementById('left-section').innerHTML = ''; // Clear the loading indicator
+                    document.getElementById('left-section').style.width = '66.66%';
+                    document.getElementById('right-section').style.width = '33.33%';
+
+                    // Initialize the chat interface in left-section
+                    document.getElementById('left-section').innerHTML = `
+                        <div id="chat-container">
+                            <!-- Chat Window -->
+                            <div id="chat-window">
+                                <!-- Messages will be appended here -->
+                            </div>
+
+                            <!-- Chat Input -->
+                            <div id="chat-input">
+                                <textarea id="user-input" placeholder="Type your message here..."></textarea>
+                                <button id="send-button" disabled>Send</button>
+                            </div>
+                        </div>
+                    `;
+
+                    // Update the right section to display the three sections
+                    var rightContent = '';
+                    rightContent += '<div class="section" id="dispute-section">';
+                    rightContent += '<h2>Legal Dispute</h2>';
+                    rightContent += '<div class="content">' + formatText(disputeText) + '</div>';
+                    rightContent += '</div>';
+
+                    rightContent += '<div class="section" id="case-titles-section">';
+                    rightContent += '<h2>Legal Research</h2>';
+                    rightContent += '<div class="content">';
+                    responseData.cases.forEach(function(caseItem) {
+                        rightContent += `<p class="case-title" data-doc-id="${caseItem.doc_id}" data-analysis-ids='${JSON.stringify(caseItem.analysis_reasoning_ids)}'>${caseItem.case_title}</p>`;
+                    });
+                    rightContent += '</div>';
+                    rightContent += '</div>';
+
+                    rightContent += '<div class="section" id="final-memo-section">';
+                    rightContent += '<h2>Research Memo</h2>';
+                    rightContent += '<div class="content">' + formatText(responseData.final_memo) + '</div>';
+                    rightContent += '</div>';
+
+                    document.getElementById('right-section').innerHTML = rightContent;
+
+                    // Add event listeners to the sections
+                    document.getElementById('dispute-section').addEventListener('click', function() {
+                        showDocumentPreview('Legal Dispute', disputeText);
+                    });
+
+                    document.getElementById('case-titles-section').addEventListener('click', function() {
+                        var caseTitlesContent = '';
+                        responseData.cases.forEach(function(caseItem) {
+                            caseTitlesContent += `<p class="case-title" data-doc-id="${caseItem.doc_id}" data-analysis-ids='${JSON.stringify(caseItem.analysis_reasoning_ids)}'>${caseItem.case_title}</p>`;
+                        });
+                        showDocumentPreview('Legal Research', caseTitlesContent);
+                    });
+
+                    document.getElementById('final-memo-section').addEventListener('click', function() {
+                        showDocumentPreview('Research Memo', responseData.final_memo);
+                    });
+
+                    // Handle chat input
+                    const userInput = document.getElementById('user-input');
+                    const sendButton = document.getElementById('send-button');
+
+                    userInput.addEventListener('input', function() {
+                        const text = this.value.trim();
+                        sendButton.disabled = text.length === 0;
+                    });
+
+                    sendButton.addEventListener('click', function() {
+                        const message = userInput.value.trim();
+                        if (message.length === 0) return;
+
+                        // Add user message to chat window
+                        addMessage('user', message);
+                        userInput.value = '';
+                        sendButton.disabled = true;
+
+                        // Append user message to conversation
+                        conversation.push({
+                            "role": "user",
+                            "content": message
+                        });
+
+                        // Ensure the number of user messages does not exceed 20
+                        const userMessageCount = conversation.filter(msg => msg.role === 'user').length;
+                        if (userMessageCount > 20) {
+                            // Remove the oldest user message and the corresponding assistant message
+                            for (let i = 0; i < conversation.length; i++) {
+                                if (conversation[i].role === 'user') {
+                                    conversation.splice(i, 2); // Remove user and assistant message
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Send message to backend
+                        sendMessageToBackend(message);
+                    });
+
+                    // Add event listener to case titles
+                    document.querySelectorAll('.case-title').forEach(function(element) {
+                        element.addEventListener('click', function() {
+                            const docId = this.getAttribute('data-doc-id');
+                            const analysisIds = JSON.parse(this.getAttribute('data-analysis-ids'));
+                            fetchCaseDetails(docId, analysisIds, this.textContent);
+                        });
+                    });
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    alert('An error occurred while processing the dispute.');
+                    resetUI();
+                });
+            });
+
+            function formatText(text) {
+                // Simple formatting, replace line breaks
+                return text.replace(/\n/g, '<br>');
+            }
+
+            function showDocumentPreview(title, content) {
+                // Adjust widths
+                document.getElementById('left-section').style.width = '50%';
+                document.getElementById('right-section').style.width = '50%';
+
+                // Display the document preview in right-section
+                var previewContent = '';
+                previewContent += '<div id="document-preview">';
+                previewContent += '<div id="document-preview-header">';
+                previewContent += '<h2>' + title + '</h2>';
+                previewContent += '<button id="close-preview-button">&times;</button>';
+                previewContent += '</div>';
+                previewContent += '<div id="document-content">' + formatText(content) + '</div>';
+                previewContent += '</div>';
+
+                document.getElementById('right-section').innerHTML = previewContent;
+
+                // Add event listener to close button
+                document.getElementById('close-preview-button').addEventListener('click', function() {
+                    // Restore the previous state
+                    document.getElementById('left-section').style.width = '66.66%';
+                    document.getElementById('right-section').style.width = '33.33%';
+
+                    // Rebuild the right section with the three sections using currentResponseData
+                    if (!currentResponseData) {
+                        alert('Error: No data available to restore the sections.');
+                        return;
+                    }
+
+                    var rightContent = '';
+                    rightContent += '<div class="section" id="dispute-section">';
+                    rightContent += '<h2>Legal Dispute</h2>';
+                    rightContent += '<div class="content">' + formatText(disputeText) + '</div>';
+                    rightContent += '</div>';
+
+                    rightContent += '<div class="section" id="case-titles-section">';
+                    rightContent += '<h2>Legal Research</h2>';
+                    rightContent += '<div class="content">';
+                    currentResponseData.cases.forEach(function(caseItem) {
+                        rightContent += `<p class="case-title" data-doc-id="${caseItem.doc_id}" data-analysis-ids='${JSON.stringify(caseItem.analysis_reasoning_ids)}'>${caseItem.case_title}</p>`;
+                    });
+                    rightContent += '</div>';
+                    rightContent += '</div>';
+
+                    rightContent += '<div class="section" id="final-memo-section">';
+                    rightContent += '<h2>Research Memo</h2>';
+                    rightContent += '<div class="content">' + formatText(currentResponseData.final_memo) + '</div>';
+                    rightContent += '</div>';
+
+                    document.getElementById('right-section').innerHTML = rightContent;
+
+                    // Re-add event listeners to the sections
+                    document.getElementById('dispute-section').addEventListener('click', function() {
+                        showDocumentPreview('Legal Dispute', disputeText);
+                    });
+
+                    document.getElementById('case-titles-section').addEventListener('click', function() {
+                        var caseTitlesContent = '';
+                        currentResponseData.cases.forEach(function(caseItem) {
+                            caseTitlesContent += `<p class="case-title" data-doc-id="${caseItem.doc_id}" data-analysis-ids='${JSON.stringify(caseItem.analysis_reasoning_ids)}'>${caseItem.case_title}</p>`;
+                        });
+                        showDocumentPreview('Legal Research', caseTitlesContent);
+                    });
+
+                    document.getElementById('final-memo-section').addEventListener('click', function() {
+                        showDocumentPreview('Research Memo', currentResponseData.final_memo);
+                    });
+
+                    // Re-add event listeners to case titles
+                    document.querySelectorAll('.case-title').forEach(function(element) {
+                        element.addEventListener('click', function() {
+                            const docId = this.getAttribute('data-doc-id');
+                            const analysisIds = JSON.parse(this.getAttribute('data-analysis-ids'));
+                            fetchCaseDetails(docId, analysisIds, this.textContent);
+                        });
+                    });
+                });
+            }
+
+            function addMessage(sender, text) {
+                const chatWindow = document.getElementById('chat-window');
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message', sender);
+
+                const bubbleDiv = document.createElement('div');
+                bubbleDiv.classList.add('bubble');
+                bubbleDiv.innerHTML = formatText(text);
+
+                messageDiv.appendChild(bubbleDiv);
+                chatWindow.appendChild(messageDiv);
+
+                // Scroll to bottom
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            }
+
+            function scrollChatToBottom() {
+                const chatWindow = document.getElementById('chat-window');
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            }
+
+            function sendMessageToBackend(message) {
+                fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ conversation: conversation, user_task: message }),
+                })
+                .then(response => response.json())
+                .then(responseData => {
+                    if (responseData.error) {
+                        alert(responseData.error);
+                        return;
+                    }
+
+                    // Update the conversation with the latest messages
+                    conversation = responseData.conversation;
+
+                    // Add assistant message to chat window
+                    addMessage('assistant', responseData.assistant_response);
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    alert('An error occurred while sending the message.');
+                });
+            }
+
+            function resetUI() {
+                // Reset the UI to initial state
+                document.getElementById('header').style.display = 'block';
+                document.getElementById('input-container').style.display = 'flex';
+                document.getElementById('lexplore-button').style.display = 'block';
+                document.getElementById('main-content').style.display = 'none';
+                document.getElementById('dispute-input').value = '';
+                document.getElementById('lexplore-button').disabled = true;
+            }
+
+            function fetchCaseDetails(docId, analysisIds, caseTitle) {
+                // Show loading indicators
+                document.getElementById('case-summary').innerHTML = '<p>Loading summary...</p>';
+                document.getElementById('case-text').innerHTML = '<p>Loading case text...</p>';
+
+                // Show the popup
+                document.getElementById('case-popup').style.display = 'flex';
+
+                // Fetch case details from backend
+                fetch('/get_case_details', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        document_id: parseInt(docId),
+                        analysis_reasoning_ids: analysisIds
+                    }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        document.getElementById('case-summary').innerHTML = `<p>${data.error}</p>`;
+                        document.getElementById('case-text').innerHTML = '';
+                        return;
+                    }
+
+                    // Display case summary
+                    const summary = data.case_summary;
+                    let summaryHtml = `<h3>${summary.case_title}</h3>`;
+                    summaryHtml += `<p><strong>Background Facts:</strong> ${summary.background_facts}</p>`;
+                    summaryHtml += `<p><strong>Legal Issues:</strong> ${summary.legal_issues.map(issue => issue.text).join('; ')}</p>`;
+                    summaryHtml += `<p><strong>Arguments:</strong> ${summary.arguments.map(arg => arg.text).join('; ')}</p>`;
+                    // Add Analysis Reasoning
+                    if (summary.analysis_reasoning && summary.analysis_reasoning.length > 0) {
+                        summaryHtml += `<p><strong>Analysis Reasoning:</strong></p><ul>`;
+                        summary.analysis_reasoning.forEach(ar => {
+                            summaryHtml += `<li>${ar.text}</li>`;
+                        });
+                        summaryHtml += `</ul>`;
+                    }
+                    summaryHtml += `<p><strong>Decision Order:</strong> ${summary.decision_order}</p>`;
+                    summaryHtml += `<p><strong>Dissenting/Concurring Opinions:</strong> ${summary.dissenting_concurring.map(dc => dc.text).join('; ')}</p>`;
+                    document.getElementById('case-summary').innerHTML = summaryHtml;
+
+                    // Display case text with highlights
+                    const caseText = data.case_text;
+                    let highlightedText = caseText;
+
+                    // Highlight paragraphs related to analysis_reasoning_ids
+                    analysisIds.forEach(ar_id => {
+                        const regex = new RegExp(`data-summary-cites="${ar_id}"`, 'g');
+                        highlightedText = highlightedText.replace(regex, 'style="background-color: yellow;" data-summary-cites');
+                    });
+
+                    document.getElementById('case-text').innerHTML = highlightedText;
+                })
+                .catch(error => {
+                    console.error('Error fetching case details:', error);
+                    document.getElementById('case-summary').innerHTML = '<p>An error occurred while fetching case details.</p>';
+                    document.getElementById('case-text').innerHTML = '';
+                });
+            }
+
+            // Handle closing the popup
+            document.getElementById('close-popup').addEventListener('click', function() {
+                document.getElementById('case-popup').style.display = 'none';
+            });
+
+            // Optional: Close popup when clicking outside the popup content
+            document.getElementById('case-popup').addEventListener('click', function(event) {
+                if (event.target === this) {
+                    this.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

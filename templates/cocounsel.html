@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoCounsel - LEXEL</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #34495e;
+            --accent-color: #3498db;
+            --text-color: #333;
+            --background-color: #ecf0f1;
+            --card-background: #fff;
+            --border-color: #bdc3c7;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 1rem 0;
+            text-align: center;
+            box-shadow: 0 2px 4px var(--shadow-color);
+        }
+        header h1 {
+            font-family: 'Playfair Display', serif;
+            margin: 0;
+            font-size: 2.5rem;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .left, .right {
+            flex: 1;
+            min-width: 300px;
+            margin: 1rem;
+        }
+        textarea#factualDispute, input#caseSearchInput {
+            width: 100%;
+            padding: 15px;
+            font-size: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            resize: vertical;
+            box-sizing: border-box;
+            font-family: 'Roboto', sans-serif;
+            transition: border-color 0.3s ease;
+        }
+        textarea#factualDispute:focus, input#caseSearchInput:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+        textarea#factualDispute {
+            min-height: 200px;
+        }
+        input#caseSearchInput {
+            margin-bottom: 1rem;
+        }
+        ul#caseSearchResults, ul#selectedCases {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: var(--card-background);
+        }
+        ul#caseSearchResults li, ul#selectedCases li {
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        ul#caseSearchResults li:hover {
+            background-color: #f1f1f1;
+        }
+        ul#selectedCases li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .removeCase {
+            background: none;
+            border: none;
+            color: #e74c3c;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        .removeCase:hover {
+            color: #c0392b;
+        }
+        #submitButton {
+            display: block;
+            width: 200px;
+            margin: 2rem auto;
+            padding: 12px 24px;
+            font-size: 1rem;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        #submitButton:hover {
+            background-color: #2980b9;
+        }
+        #legalMemorandumContainer {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background-color: var(--card-background);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px var(--shadow-color);
+        }
+        #legalMemorandumContainer h2 {
+            color: var(--primary-color);
+            font-family: 'Playfair Display', serif;
+            margin-bottom: 1.5rem;
+            font-size: 2rem;
+            text-align: center;
+        }
+        #legalMemorandumContainer h3 {
+            color: var(--secondary-color);
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+        #legalMemorandumContainer p {
+            margin-bottom: 1rem;
+            text-align: justify;
+        }
+        #legalMemorandumContainer blockquote {
+            margin: 1rem 0;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-left: 5px solid var(--accent-color);
+            font-style: italic;
+        }
+        #legalMemorandumContainer footer {
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.9rem;
+            color: #7f8c8d;
+        }
+        #chatContainer {
+            max-width: 800px;
+            margin: 2rem auto;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            background-color: var(--card-background);
+        }
+        #chatHistory {
+            height: 400px;
+            overflow-y: auto;
+            padding: 1rem;
+            background-color: #f9f9f9;
+        }
+        .chat-message {
+            margin-bottom: 1rem;
+            padding: 10px 15px;
+            border-radius: 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .user-message {
+            background-color: #e1f5fe;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        .assistant-message {
+            background-color: #f1f8e9;
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+        }
+        #chatInputContainer {
+            display: flex;
+            padding: 1rem;
+            background-color: white;
+            border-top: 1px solid var(--border-color);
+        }
+        #chatInput {
+            flex-grow: 1;
+            padding: 10px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            font-size: 14px;
+            resize: none;
+            transition: border-color 0.3s ease;
+        }
+        #chatInput:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+        #sendChatButton {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            margin-left: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.3s ease;
+        }
+        #sendChatButton:hover {
+            background-color: #2980b9;
+        }
+        #sendChatButton:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .chat-timestamp {
+            font-size: 0.8em;
+            color: #95a5a6;
+            margin-top: 5px;
+        }
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            .left, .right {
+                width: 100%;
+            }
+            #submitButton {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>LEXEL - CoCounsel</h1>
+    </header>
+    <div class="container">
+        <div class="left">
+            <textarea id="factualDispute" placeholder="Enter Factual Dispute"></textarea>
+        </div>
+        <div class="right">
+            <input type="text" id="caseSearchInput" placeholder="Search Cases">
+            <ul id="caseSearchResults"></ul>
+            <h3>Selected Cases</h3>
+            <ul id="selectedCases"></ul>
+        </div>
+    </div>
+    <button id="submitButton">Generate Research Memo</button>
+    <div id="legalMemorandumContainer" style="display: none;"></div>
+
+    <div id="chatContainer" style="display: none;">
+        <div id="chatHistory"></div>
+        <div id="chatInputContainer">
+            <textarea id="chatInput" placeholder="Type your message here..." rows="1"></textarea>
+            <button id="sendChatButton" disabled>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+
+    <script>
+        $(document).ready(function() {
+            // Retrieve data from localStorage
+            const searchQuery = localStorage.getItem('cocounsel_search_query');
+            const selectedCases = JSON.parse(localStorage.getItem('cocounsel_selected_cases')) || [];
+
+            
+            // Prefill the factual dispute textbox
+            if (searchQuery) {
+                $('#factualDispute').val(searchQuery);
+            }
+
+            // Prefill the selected cases
+            selectedCases.forEach(function(caseItem) {
+                addSelectedCase(caseItem.document_id, caseItem.case_title);
+            });
+
+            // Event handler for case search input
+            $('#caseSearchInput').on('input', function() {
+                const query = $(this).val();
+                if (query.length >= 3) {
+                    $.ajax({
+                        url: '/search_cases',
+                        method: 'GET',
+                        data: { query: query },
+                        success: function(data) {
+                            displayCaseSearchResults(data);
+                        },
+                        error: function(jqXHR, textStatus, errorThrown) {
+                            console.error('Error searching cases:', errorThrown);
+                        }
+                    });
+                } else {
+                    $('#caseSearchResults').empty();
+                }
+            });
+
+            function displayCaseSearchResults(cases) {
+                let resultsHtml = '';
+                cases.forEach(function(caseItem) {
+                    resultsHtml += `<li data-document-id="${caseItem.document_id}">${caseItem.case_title}</li>`;
+                });
+                $('#caseSearchResults').html(resultsHtml);
+            }
+
+            // Click handler for selecting a case from search results
+            $(document).on('click', '#caseSearchResults li', function() {
+                const documentId = $(this).data('document-id');
+                const caseTitle = $(this).text();
+                addSelectedCase(documentId, caseTitle);
+            });
+
+            function addSelectedCase(documentId, caseTitle) {
+                if ($('#selectedCases li[data-document-id="' + documentId + '"]').length === 0) {
+                    $('#selectedCases').append(`<li data-document-id="${documentId}">${caseTitle} <button class="removeCase">&times;</button></li>`);
+                }
+            }
+
+            // Remove case from selected cases
+            $(document).on('click', '.removeCase', function(e) {
+                e.stopPropagation();
+                $(this).parent().remove();
+            });
+
+
+            $('#submitButton').click(function() {
+                // Get the factual dispute text
+                const factualDispute = $('#factualDispute').val();
+
+                // Get the selected case IDs
+                let selectedDocumentIds = [];
+                $('#selectedCases li').each(function() {
+                    selectedDocumentIds.push($(this).data('document-id'));
+                });
+
+                // Prepare data to send
+                const data = {
+                    factual_dispute: factualDispute,
+                    document_ids: selectedDocumentIds
+                };
+
+                // Send data to the server
+                $.ajax({
+                    url: '/cocounsel_submit',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(data),
+                    success: function(response) {
+                        if (response.success) {
+                            // Display the legal memorandum and initialize chat
+                            displayLegalMemorandum(response.legal_memorandum, response.initial_prompt);
+                        } else {
+                            alert('An error occurred: ' + response.error);
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        alert('An error occurred: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.error : errorThrown));
+                    }
+                });
+            });
+
+
+
+
+            let conversationHistory = [];    
+
+            function displayLegalMemorandum(memoContent, initialPrompt) {
+                // Use a regular expression to extract the content between <memo> tags
+                const memoRegex = /<memo>([\s\S]*?)<\/memo>/;
+                const match = memoRegex.exec(memoContent);
+
+                let formattedContent = '';
+
+                if (match && match[1]) {
+                    formattedContent = match[1]
+                        .replace(/^### (.*$)/gim, '<h3>$1</h3>') // Convert ### headings to h3
+                        .replace(/^## (.*$)/gim, '<h3>$1</h3>')  // Convert ## headings to h3
+                        .replace(/^# (.*$)/gim, '<h2>$1</h2>')   // Convert # headings to h2
+                        .replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>') // Convert blockquotes
+                        .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>') // Bold text
+                        .replace(/\*(.*)\*/gim, '<em>$1</em>') // Italic text
+                        .replace(/\n\s*\n/g, '</p><p>') // Paragraphs
+                        .replace(/\n/g, '<br>'); // Line breaks
+
+                    // Wrap content in paragraph tags
+                    formattedContent = '<p>' + formattedContent + '</p>';
+                } else {
+                    formattedContent = '<p>No valid memo content found.</p>';
+                }
+
+                $('#legalMemorandumContainer').html(`
+                    <h2>Research Memo</h2>
+                    ${formattedContent}
+                    <footer>Generated by LEXEL CoCounsel</footer>
+                `);
+
+                // Smooth scroll to the memorandum
+                $('html, body').animate({
+                    scrollTop: $('#legalMemorandumContainer').offset().top
+                }, 1000);
+
+                // Show the container if it was hidden
+                $('#legalMemorandumContainer').show();
+
+                // Initialize the conversation history
+                conversationHistory = [
+                    { "role": "user", "content": initialPrompt },
+                    { "role": "assistant", "content": memoContent }
+                ];
+
+                // Show the chat container
+                $('#chatContainer').show();
+
+                // Update the chat history display
+                updateChatHistory();
+            }
+
+
+            function updateChatHistory() {
+                let chatHtml = '';
+                // Start from index 2 to skip the initial prompt and memo
+                for (let i = 2; i < conversationHistory.length; i++) {
+                    const message = conversationHistory[i];
+                    const timestamp = new Date().toLocaleTimeString();
+                    if (message.role === 'user') {
+                        chatHtml += `
+                            <div class="chat-message user-message">
+                                <div>${message.content}</div>
+                                <div class="chat-timestamp">${timestamp}</div>
+                            </div>`;
+                    } else if (message.role === 'assistant') {
+                        chatHtml += `
+                            <div class="chat-message assistant-message">
+                                <div>${message.content}</div>
+                                <div class="chat-timestamp">${timestamp}</div>
+                            </div>`;
+                    }
+                }
+                $('#chatHistory').html(chatHtml);
+                $('#chatHistory').scrollTop($('#chatHistory')[0].scrollHeight);
+            }
+
+
+            // Enable/disable send button based on input
+            $('#chatInput').on('input', function() {
+                $('#sendChatButton').prop('disabled', $(this).val().trim() === '');
+            });
+
+            // Allow sending message with Enter key
+            $('#chatInput').keypress(function(e) {
+                if(e.which == 13 && !e.shiftKey) {
+                    e.preventDefault();
+                    $('#sendChatButton').click();
+                }
+            });
+
+            // Adjust textarea height dynamically
+            $('#chatInput').on('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+            });
+
+
+            $('#sendChatButton').click(function() {
+                const userMessage = $('#chatInput').val().trim();
+                if (userMessage === '') {
+                    return;
+                }
+                // Add user's message to conversationHistory
+                conversationHistory.push({ "role": "user", "content": userMessage });
+                // Clear the input and reset its height
+                $('#chatInput').val('').css('height', 'auto');
+                // Update the chat display
+                updateChatHistory();
+                // Disable the send button
+                $('#sendChatButton').prop('disabled', true);
+                // Send conversationHistory to the backend
+                $.ajax({
+                    url: '/chat',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ conversation: conversationHistory }),
+                    success: function(response) {
+                        // Add assistant's response to conversationHistory
+                        conversationHistory.push({ "role": "assistant", "content": response.reply });
+                        // Update the chat display
+                        updateChatHistory();
+
+                        $('#sendChatButton').prop('disabled', false);
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        alert('An error occurred: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.error : errorThrown));
+
+                        $('#sendChatButton').prop('disabled', false);
+                    }
+                });
+            });
+
+
+
+            // Update the AJAX success handler in the '/cocounsel_submit' call
+            $('#submitButton').click(function() {
+                // Get the factual dispute text
+                const factualDispute = $('#factualDispute').val();
+
+                // Get the selected case IDs
+                let selectedDocumentIds = [];
+                $('#selectedCases li').each(function() {
+                    selectedDocumentIds.push($(this).data('document-id'));
+                });
+
+                // Prepare data to send
+                const data = {
+                    factual_dispute: factualDispute,
+                    document_ids: selectedDocumentIds
+                };
+
+                // Send data to the server
+                $.ajax({
+                    url: '/cocounsel_submit',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(data),
+                    success: function(response) {
+                        if (response.success) {
+                            // Display the legal memorandum and initialize chat
+                            displayLegalMemorandum(response.legal_memorandum, response.initial_prompt);
+                        } else {
+                            alert('An error occurred: ' + response.error);
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        alert('An error occurred: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.error : errorThrown));
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
