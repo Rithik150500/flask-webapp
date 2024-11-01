@@ -86,6 +86,8 @@ def process_dispute():
         # Step 1: Generate initial memo and parse case names
         initial_memo_response = generate_initial_memo(factual_dispute)
         memo_text, case_names = parse_initial_memo_and_case_names(initial_memo_response)
+        
+        case_names.append("Aneeta Hada vs M/S Godfather Travels & Tours Private Limited (2012)")
 
         print("Initial Memo:", memo_text)
         print("Case Names:", case_names)
@@ -560,6 +562,42 @@ def get_document_ids_by_case_names(tx, case_names):
     try:
         document_ids = []
         for case_name in case_names:
+            # Remove special characters and normalize spaces
+            cleaned_case_name = (
+                case_name
+                .replace('/', '')
+                .replace('&', '')
+                .replace('(', '')
+                .replace(')', '')
+                .replace('[', '')
+                .replace(']', '')
+                .replace('{', '')
+                .replace('}', '')
+                .replace('\\', '')
+                .replace('\'', '')
+                .replace('"', '')
+                .replace('`', '')
+                .replace('@', '')
+                .replace('#', '')
+                .replace('$', '')
+                .replace('%', '')
+                .replace('^', '')
+                .replace('*', '')
+                .replace('+', '')
+                .replace('=', '')
+                .replace('|', '')
+                .replace('<', '')
+                .replace('>', '')
+                .replace('?', '')
+                .replace('!', '')
+                .replace(';', '')
+                .replace(':', '')
+            )
+            # Replace multiple spaces with a single space and trim
+            cleaned_case_name = ' '.join(cleaned_case_name.split())
+
+            print(cleaned_case_name)
+            
             query = """
             CALL db.index.fulltext.queryNodes("doc_case_title", $search_term, {mode: "PHRASE"}) YIELD node, score
             WITH node, score
@@ -570,7 +608,7 @@ def get_document_ids_by_case_names(tx, case_names):
                 ELSE null
             END AS document_id
             """
-            result = tx.run(query, search_term=case_name)
+            result = tx.run(query, search_term=cleaned_case_name)
             record = result.single()
             # Append the document_id or None if it's null
             document_ids.append(record['document_id'] if record else None)
