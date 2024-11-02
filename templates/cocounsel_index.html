@@ -404,13 +404,13 @@
             let disputeText = '';
             let conversation = []; // Initialize empty conversation
             let currentResponseData = null; // Higher scope variable for responseData
-
+    
             // Enable Lexplore button when there is text
             document.getElementById('dispute-input').addEventListener('input', function() {
                 const text = this.value.trim();
                 document.getElementById('lexplore-button').disabled = text.length === 0;
             });
-
+    
             // Handle Lexplore button click
             document.getElementById('lexplore-button').addEventListener('click', function() {
                 disputeText = document.getElementById('dispute-input').value.trim();
@@ -418,19 +418,19 @@
                     alert('Please enter a legal dispute.');
                     return;
                 }
-
+    
                 // Hide the initial elements
                 document.getElementById('header').style.display = 'none';
                 document.getElementById('input-container').style.display = 'none';
                 document.getElementById('lexplore-button').style.display = 'none';
-
+    
                 // Show the main content
                 document.getElementById('main-content').style.display = 'flex';
-
+    
                 // Display loading indicators in both sections
                 document.getElementById('left-section').innerHTML = '<div class="loading">Setting up your workspace</div>';
                 document.getElementById('right-section').innerHTML = '<div class="loading">Analyzing the dispute</div>';
-
+    
                 // Send AJAX request to backend to process dispute
                 fetch('/process_dispute', {
                     method: 'POST',
@@ -447,122 +447,12 @@
                         resetUI();
                         return;
                     }
-
-                    // Assign responseData to the higher scope variable
-                    currentResponseData = responseData;
-
-                    // Initialize conversation with initial_conversation
-                    conversation = responseData.initial_conversation;
-
-                    // Update the left section to display the chat interface
-                    document.getElementById('left-section').innerHTML = ''; // Clear the loading indicator
-                    document.getElementById('left-section').style.width = '66.66%';
-                    document.getElementById('right-section').style.width = '33.33%';
-
-                    // Initialize the chat interface in left-section
-                    document.getElementById('left-section').innerHTML = `
-                        <div id="chat-container">
-                            <!-- Chat Window -->
-                            <div id="chat-window">
-                                <!-- Messages will be appended here -->
-                            </div>
-
-                            <!-- Chat Input -->
-                            <div id="chat-input">
-                                <textarea id="user-input" placeholder="Type your message here..."></textarea>
-                                <button id="send-button" disabled>Send</button>
-                            </div>
-                        </div>
-                    `;
-
-                    // Update the right section to display the three sections
-                    var rightContent = '';
-                    rightContent += '<div class="section" id="dispute-section">';
-                    rightContent += '<h2>Legal Dispute</h2>';
-                    rightContent += '<div class="content">' + formatText(disputeText) + '</div>';
-                    rightContent += '</div>';
-
-                    rightContent += '<div class="section" id="case-titles-section">';
-                    rightContent += '<h2>Legal Research</h2>';
-                    rightContent += '<div class="content">';
-                    responseData.cases.forEach(function(caseItem) {
-                        rightContent += `<p class="case-title" data-doc-id="${caseItem.doc_id}" data-analysis-ids='${JSON.stringify(caseItem.analysis_reasoning_ids)}'>${caseItem.case_title}</p>`;
-                    });
-                    rightContent += '</div>';
-                    rightContent += '</div>';
-
-                    rightContent += '<div class="section" id="final-memo-section">';
-                    rightContent += '<h2>Research Memo</h2>';
-                    rightContent += '<div class="content">' + formatText(responseData.final_memo) + '</div>';
-                    rightContent += '</div>';
-
-                    document.getElementById('right-section').innerHTML = rightContent;
-
-                    // Add event listeners to the sections
-                    document.getElementById('dispute-section').addEventListener('click', function() {
-                        showDocumentPreview('Legal Dispute', disputeText);
-                    });
-
-                    document.getElementById('case-titles-section').addEventListener('click', function() {
-                        var caseTitlesContent = '';
-                        responseData.cases.forEach(function(caseItem) {
-                            caseTitlesContent += `<p class="case-title" data-doc-id="${caseItem.doc_id}" data-analysis-ids='${JSON.stringify(caseItem.analysis_reasoning_ids)}'>${caseItem.case_title}</p>`;
-                        });
-                        showDocumentPreview('Legal Research', caseTitlesContent);
-                    });
-
-                    document.getElementById('final-memo-section').addEventListener('click', function() {
-                        showDocumentPreview('Research Memo', responseData.final_memo);
-                    });
-
-                    // Handle chat input
-                    const userInput = document.getElementById('user-input');
-                    const sendButton = document.getElementById('send-button');
-
-                    userInput.addEventListener('input', function() {
-                        const text = this.value.trim();
-                        sendButton.disabled = text.length === 0;
-                    });
-
-                    sendButton.addEventListener('click', function() {
-                        const message = userInput.value.trim();
-                        if (message.length === 0) return;
-
-                        // Add user message to chat window
-                        addMessage('user', message);
-                        userInput.value = '';
-                        sendButton.disabled = true;
-
-                        // Append user message to conversation
-                        conversation.push({
-                            "role": "user",
-                            "content": message
-                        });
-
-                        // Ensure the number of user messages does not exceed 20
-                        const userMessageCount = conversation.filter(msg => msg.role === 'user').length;
-                        if (userMessageCount > 20) {
-                            // Remove the oldest user message and the corresponding assistant message
-                            for (let i = 0; i < conversation.length; i++) {
-                                if (conversation[i].role === 'user') {
-                                    conversation.splice(i, 2); // Remove user and assistant message
-                                    break;
-                                }
-                            }
-                        }
-
-                        // Send message to backend
-                        sendMessageToBackend(message);
-                    });
-
-                    // Add event listener to case titles
-                    document.querySelectorAll('.case-title').forEach(function(element) {
-                        element.addEventListener('click', function() {
-                            const docId = this.getAttribute('data-doc-id');
-                            const analysisIds = JSON.parse(this.getAttribute('data-analysis-ids'));
-                            fetchCaseDetails(docId, analysisIds, this.textContent);
-                        });
-                    });
+    
+                    const jobId = responseData.job_id;
+    
+                    // Start polling for job result
+                    pollJobResult(jobId);
+    
                 })
                 .catch((error) => {
                     console.error('Error:', error);
@@ -570,17 +460,169 @@
                     resetUI();
                 });
             });
-
+    
+            // Polling function to check job status
+            function pollJobResult(jobId) {
+                const interval = setInterval(() => {
+                    fetch(`/get_job_result?job_id=${jobId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'completed') {
+                                clearInterval(interval);
+                                handleJobResult(data.result);
+                            } else if (data.status === 'failed') {
+                                clearInterval(interval);
+                                alert(data.result.error || 'An error occurred while processing the dispute.');
+                                resetUI();
+                            } else {
+                                console.log('Processing...');
+                                // Optionally, update a loading indicator
+                            }
+                        })
+                        .catch(error => {
+                            clearInterval(interval);
+                            console.error('Error fetching job result:', error);
+                            alert('An error occurred while fetching the job result.');
+                            resetUI();
+                        });
+                }, 5000); // Poll every 5 seconds
+            }
+    
+            // Function to handle the job result
+            function handleJobResult(responseData) {
+                if (responseData.error) {
+                    alert(responseData.error);
+                    resetUI();
+                    return;
+                }
+    
+                // Assign responseData to the higher scope variable
+                currentResponseData = responseData;
+    
+                // Initialize conversation with initial_conversation
+                conversation = responseData.initial_conversation;
+    
+                // Update the left section to display the chat interface
+                document.getElementById('left-section').innerHTML = ''; // Clear the loading indicator
+                document.getElementById('left-section').style.width = '66.66%';
+                document.getElementById('right-section').style.width = '33.33%';
+    
+                // Initialize the chat interface in left-section
+                document.getElementById('left-section').innerHTML = `
+                    <div id="chat-container">
+                        <!-- Chat Window -->
+                        <div id="chat-window">
+                            <!-- Messages will be appended here -->
+                        </div>
+    
+                        <!-- Chat Input -->
+                        <div id="chat-input">
+                            <textarea id="user-input" placeholder="Type your message here..."></textarea>
+                            <button id="send-button" disabled>Send</button>
+                        </div>
+                    </div>
+                `;
+    
+                // Update the right section to display the three sections
+                var rightContent = '';
+                rightContent += '<div class="section" id="dispute-section">';
+                rightContent += '<h2>Legal Dispute</h2>';
+                rightContent += '<div class="content">' + formatText(disputeText) + '</div>';
+                rightContent += '</div>';
+    
+                rightContent += '<div class="section" id="case-titles-section">';
+                rightContent += '<h2>Legal Research</h2>';
+                rightContent += '<div class="content">';
+                responseData.cases.forEach(function(caseItem) {
+                    rightContent += `<p class="case-title" data-doc-id="${caseItem.doc_id}" data-analysis-ids='${JSON.stringify(caseItem.analysis_reasoning_ids)}'>${caseItem.case_title}</p>`;
+                });
+                rightContent += '</div>';
+                rightContent += '</div>';
+    
+                rightContent += '<div class="section" id="final-memo-section">';
+                rightContent += '<h2>Research Memo</h2>';
+                rightContent += '<div class="content">' + formatText(responseData.final_memo) + '</div>';
+                rightContent += '</div>';
+    
+                document.getElementById('right-section').innerHTML = rightContent;
+    
+                // Add event listeners to the sections
+                document.getElementById('dispute-section').addEventListener('click', function() {
+                    showDocumentPreview('Legal Dispute', disputeText);
+                });
+    
+                document.getElementById('case-titles-section').addEventListener('click', function() {
+                    var caseTitlesContent = '';
+                    responseData.cases.forEach(function(caseItem) {
+                        caseTitlesContent += `<p class="case-title" data-doc-id="${caseItem.doc_id}" data-analysis-ids='${JSON.stringify(caseItem.analysis_reasoning_ids)}'>${caseItem.case_title}</p>`;
+                    });
+                    showDocumentPreview('Legal Research', caseTitlesContent);
+                });
+    
+                document.getElementById('final-memo-section').addEventListener('click', function() {
+                    showDocumentPreview('Research Memo', responseData.final_memo);
+                });
+    
+                // Handle chat input
+                const userInput = document.getElementById('user-input');
+                const sendButton = document.getElementById('send-button');
+    
+                userInput.addEventListener('input', function() {
+                    const text = this.value.trim();
+                    sendButton.disabled = text.length === 0;
+                });
+    
+                sendButton.addEventListener('click', function() {
+                    const message = userInput.value.trim();
+                    if (message.length === 0) return;
+    
+                    // Add user message to chat window
+                    addMessage('user', message);
+                    userInput.value = '';
+                    sendButton.disabled = true;
+    
+                    // Append user message to conversation
+                    conversation.push({
+                        "role": "user",
+                        "content": message
+                    });
+    
+                    // Ensure the number of user messages does not exceed 20
+                    const userMessageCount = conversation.filter(msg => msg.role === 'user').length;
+                    if (userMessageCount > 20) {
+                        // Remove the oldest user message and the corresponding assistant message
+                        for (let i = 0; i < conversation.length; i++) {
+                            if (conversation[i].role === 'user') {
+                                conversation.splice(i, 2); // Remove user and assistant message
+                                break;
+                            }
+                        }
+                    }
+    
+                    // Send message to backend
+                    sendMessageToBackend(message);
+                });
+    
+                // Add event listener to case titles
+                document.querySelectorAll('.case-title').forEach(function(element) {
+                    element.addEventListener('click', function() {
+                        const docId = this.getAttribute('data-doc-id');
+                        const analysisIds = JSON.parse(this.getAttribute('data-analysis-ids'));
+                        fetchCaseDetails(docId, analysisIds, this.textContent);
+                    });
+                });
+            }
+    
             function formatText(text) {
                 // Simple formatting, replace line breaks
                 return text.replace(/\n/g, '<br>');
             }
-
+    
             function showDocumentPreview(title, content) {
                 // Adjust widths
                 document.getElementById('left-section').style.width = '50%';
                 document.getElementById('right-section').style.width = '50%';
-
+    
                 // Display the document preview in right-section
                 var previewContent = '';
                 previewContent += '<div id="document-preview">';
@@ -590,27 +632,27 @@
                 previewContent += '</div>';
                 previewContent += '<div id="document-content">' + formatText(content) + '</div>';
                 previewContent += '</div>';
-
+    
                 document.getElementById('right-section').innerHTML = previewContent;
-
+    
                 // Add event listener to close button
                 document.getElementById('close-preview-button').addEventListener('click', function() {
                     // Restore the previous state
                     document.getElementById('left-section').style.width = '66.66%';
                     document.getElementById('right-section').style.width = '33.33%';
-
+    
                     // Rebuild the right section with the three sections using currentResponseData
                     if (!currentResponseData) {
                         alert('Error: No data available to restore the sections.');
                         return;
                     }
-
+    
                     var rightContent = '';
                     rightContent += '<div class="section" id="dispute-section">';
                     rightContent += '<h2>Legal Dispute</h2>';
                     rightContent += '<div class="content">' + formatText(disputeText) + '</div>';
                     rightContent += '</div>';
-
+    
                     rightContent += '<div class="section" id="case-titles-section">';
                     rightContent += '<h2>Legal Research</h2>';
                     rightContent += '<div class="content">';
@@ -619,19 +661,19 @@
                     });
                     rightContent += '</div>';
                     rightContent += '</div>';
-
+    
                     rightContent += '<div class="section" id="final-memo-section">';
                     rightContent += '<h2>Research Memo</h2>';
                     rightContent += '<div class="content">' + formatText(currentResponseData.final_memo) + '</div>';
                     rightContent += '</div>';
-
+    
                     document.getElementById('right-section').innerHTML = rightContent;
-
+    
                     // Re-add event listeners to the sections
                     document.getElementById('dispute-section').addEventListener('click', function() {
                         showDocumentPreview('Legal Dispute', disputeText);
                     });
-
+    
                     document.getElementById('case-titles-section').addEventListener('click', function() {
                         var caseTitlesContent = '';
                         currentResponseData.cases.forEach(function(caseItem) {
@@ -639,11 +681,11 @@
                         });
                         showDocumentPreview('Legal Research', caseTitlesContent);
                     });
-
+    
                     document.getElementById('final-memo-section').addEventListener('click', function() {
                         showDocumentPreview('Research Memo', currentResponseData.final_memo);
                     });
-
+    
                     // Re-add event listeners to case titles
                     document.querySelectorAll('.case-title').forEach(function(element) {
                         element.addEventListener('click', function() {
@@ -654,28 +696,28 @@
                     });
                 });
             }
-
+    
             function addMessage(sender, text) {
                 const chatWindow = document.getElementById('chat-window');
                 const messageDiv = document.createElement('div');
                 messageDiv.classList.add('message', sender);
-
+    
                 const bubbleDiv = document.createElement('div');
                 bubbleDiv.classList.add('bubble');
                 bubbleDiv.innerHTML = formatText(text);
-
+    
                 messageDiv.appendChild(bubbleDiv);
                 chatWindow.appendChild(messageDiv);
-
+    
                 // Scroll to bottom
                 chatWindow.scrollTop = chatWindow.scrollHeight;
             }
-
+    
             function scrollChatToBottom() {
                 const chatWindow = document.getElementById('chat-window');
                 chatWindow.scrollTop = chatWindow.scrollHeight;
             }
-
+    
             function sendMessageToBackend(message) {
                 fetch('/chat', {
                     method: 'POST',
@@ -690,10 +732,10 @@
                         alert(responseData.error);
                         return;
                     }
-
+    
                     // Update the conversation with the latest messages
                     conversation = responseData.conversation;
-
+    
                     // Add assistant message to chat window
                     addMessage('assistant', responseData.assistant_response);
                 })
@@ -702,7 +744,7 @@
                     alert('An error occurred while sending the message.');
                 });
             }
-
+    
             function resetUI() {
                 // Reset the UI to initial state
                 document.getElementById('header').style.display = 'block';
@@ -712,15 +754,15 @@
                 document.getElementById('dispute-input').value = '';
                 document.getElementById('lexplore-button').disabled = true;
             }
-
+    
             function fetchCaseDetails(docId, analysisIds, caseTitle) {
                 // Show loading indicators
                 document.getElementById('case-summary').innerHTML = '<p>Loading summary...</p>';
                 document.getElementById('case-text').innerHTML = '<p>Loading case text...</p>';
-
+    
                 // Show the popup
                 document.getElementById('case-popup').style.display = 'flex';
-
+    
                 // Fetch case details from backend
                 fetch('/get_case_details', {
                     method: 'POST',
@@ -739,7 +781,7 @@
                         document.getElementById('case-text').innerHTML = '';
                         return;
                     }
-
+    
                     // Display case summary
                     const summary = data.case_summary;
                     let summaryHtml = `<h3>${summary.case_title}</h3>`;
@@ -757,17 +799,17 @@
                     summaryHtml += `<p><strong>Decision Order:</strong> ${summary.decision_order}</p>`;
                     summaryHtml += `<p><strong>Dissenting/Concurring Opinions:</strong> ${summary.dissenting_concurring.map(dc => dc.text).join('; ')}</p>`;
                     document.getElementById('case-summary').innerHTML = summaryHtml;
-
+    
                     // Display case text with highlights
                     const caseText = data.case_text;
                     let highlightedText = caseText;
-
+    
                     // Highlight paragraphs related to analysis_reasoning_ids
                     analysisIds.forEach(ar_id => {
                         const regex = new RegExp(`data-summary-cites="${ar_id}"`, 'g');
                         highlightedText = highlightedText.replace(regex, 'style="background-color: yellow;" data-summary-cites');
                     });
-
+    
                     document.getElementById('case-text').innerHTML = highlightedText;
                 })
                 .catch(error => {
@@ -776,12 +818,12 @@
                     document.getElementById('case-text').innerHTML = '';
                 });
             }
-
+    
             // Handle closing the popup
             document.getElementById('close-popup').addEventListener('click', function() {
                 document.getElementById('case-popup').style.display = 'none';
             });
-
+    
             // Optional: Close popup when clicking outside the popup content
             document.getElementById('case-popup').addEventListener('click', function(event) {
                 if (event.target === this) {
@@ -790,5 +832,6 @@
             });
         });
     </script>
+    
 </body>
 </html>

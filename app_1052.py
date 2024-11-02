@@ -6,6 +6,9 @@ import anthropic
 import os
 import re
 import traceback
+import threading
+import uuid
+
 
 app = Flask(__name__)
 
@@ -31,7 +34,7 @@ if not ANTHROPIC_API_KEY or ANTHROPIC_API_KEY == '':
 # Initialize Neo4j driver
 driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USERNAME, NEO4J_PASSWORD))
 
-
+jobs = {}
 
 
 @app.route('/cocounsel')
@@ -69,10 +72,38 @@ def process_dispute():
     try:
         data = request.get_json()
         factual_dispute = data.get('dispute', '').strip()
-        # questions = data.get('questions', [])
-        # answers = data.get('answers', [])
         if not factual_dispute:
             return jsonify({'error': 'No factual dispute provided'}), 400
+
+        # Generate a unique job ID
+        job_id = str(uuid.uuid4())
+
+        # Set initial job status
+        jobs[job_id] = {'status': 'processing', 'result': None}
+
+        # Start background thread
+        thread = threading.Thread(target=process_dispute_in_background, args=(factual_dispute, job_id))
+        thread.start()
+
+        # Return the job ID to the frontend
+        return jsonify({'job_id': job_id}), 202  # 202 Accepted
+
+    except Exception as e:
+        print(f"Error in process_dispute: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'error': 'An error occurred while processing the dispute.'}), 500
+
+
+
+
+def process_dispute_in_background(factual_dispute, job_id):
+    try:
+        # data = request.get_json()
+        # factual_dispute = data.get('dispute', '').strip()
+        # # questions = data.get('questions', [])
+        # # answers = data.get('answers', [])
+        # if not factual_dispute:
+        #     return jsonify({'error': 'No factual dispute provided'}), 400
 
         print(NEO4J_URI)
         print(NEO4J_PASSWORD)
@@ -87,7 +118,7 @@ def process_dispute():
         initial_memo_response = generate_initial_memo(factual_dispute)
         memo_text, case_names = parse_initial_memo_and_case_names(initial_memo_response)
         
-        case_names.append("Aneeta Hada vs M/S Godfather Travels & Tours Private Limited (2012)")
+        # case_names.append("Aneeta Hada vs M/S Godfather Travels & Tours Private Limited (2012)")
 
         print("Initial Memo:", memo_text)
         print("Case Names:", case_names)
@@ -237,30 +268,67 @@ def process_dispute():
             'final_memo': final_memo
         }
 
-
-        return jsonify(response)
-
-    except Exception as e:
-        # Log the exception with traceback for debugging
-        print(f"Error in process_dispute: {str(e)}")
-        traceback.print_exc()
-        return jsonify({'error': 'An error occurred while processing the dispute.'}), 500
-
-
-        # Prepare response
-        response = {
-            'initial_memo': memo_text,
-            'case_titles': [doc_id_to_case_title.get(case['doc_id'], '') for case in selected_case_laws],
-            'final_memo': final_memo
-        }
-
-        return jsonify(response)
+        # Update job status and result
+        jobs[job_id]['status'] = 'completed'
+        jobs[job_id]['result'] = response
 
     except Exception as e:
-        # Log the exception with traceback for debugging
-        print(f"Error in process_dispute: {str(e)}")
+        print(f"Error in process_dispute_in_background: {str(e)}")
         traceback.print_exc()
-        return jsonify({'error': 'An error occurred while processing the dispute.'}), 500
+        jobs[job_id]['status'] = 'failed'
+        jobs[job_id]['result'] = {'error': 'An error occurred while processing the dispute.'}
+
+
+
+@app.route('/get_job_result', methods=['GET'])
+def get_job_result():
+    job_id = request.args.get('job_id')
+    if not job_id or job_id not in jobs:
+        return jsonify({'error': 'Invalid or missing job ID.'}), 400
+
+    job = jobs[job_id]
+    if job['status'] == 'completed':
+        # Optionally, remove the job from the dictionary if you don't need it anymore
+        # del jobs[job_id]
+        return jsonify({'status': 'completed', 'result': job['result']})
+    elif job['status'] == 'failed':
+        # del jobs[job_id]
+        return jsonify({'status': 'failed', 'result': job['result']})
+    else:
+        return jsonify({'status': 'processing'})
+
+
+
+
+# @app.route('/process_dispute', methods=['POST'])
+# def process_dispute():
+#     try:
+        
+
+
+#         return jsonify(response)
+
+#     except Exception as e:
+#         # Log the exception with traceback for debugging
+#         print(f"Error in process_dispute: {str(e)}")
+#         traceback.print_exc()
+#         return jsonify({'error': 'An error occurred while processing the dispute.'}), 500
+
+
+#         # Prepare response
+#         response = {
+#             'initial_memo': memo_text,
+#             'case_titles': [doc_id_to_case_title.get(case['doc_id'], '') for case in selected_case_laws],
+#             'final_memo': final_memo
+#         }
+
+#         return jsonify(response)
+
+#     except Exception as e:
+#         # Log the exception with traceback for debugging
+#         print(f"Error in process_dispute: {str(e)}")
+#         traceback.print_exc()
+#         return jsonify({'error': 'An error occurred while processing the dispute.'}), 500
 
 
 @app.route('/chat', methods=['POST'])
