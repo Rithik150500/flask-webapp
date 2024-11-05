@@ -404,13 +404,13 @@
             let disputeText = '';
             let conversation = []; // Initialize empty conversation
             let currentResponseData = null; // Higher scope variable for responseData
-    
+
             // Enable Lexplore button when there is text
             document.getElementById('dispute-input').addEventListener('input', function() {
                 const text = this.value.trim();
                 document.getElementById('lexplore-button').disabled = text.length === 0;
             });
-    
+
             // Handle Lexplore button click
             document.getElementById('lexplore-button').addEventListener('click', function() {
                 disputeText = document.getElementById('dispute-input').value.trim();
@@ -418,19 +418,19 @@
                     alert('Please enter a legal dispute.');
                     return;
                 }
-    
+
                 // Hide the initial elements
                 document.getElementById('header').style.display = 'none';
                 document.getElementById('input-container').style.display = 'none';
                 document.getElementById('lexplore-button').style.display = 'none';
-    
+
                 // Show the main content
                 document.getElementById('main-content').style.display = 'flex';
-    
+
                 // Display loading indicators in both sections
                 document.getElementById('left-section').innerHTML = '<div class="loading">Setting up your workspace</div>';
                 document.getElementById('right-section').innerHTML = '<div class="loading">Analyzing the dispute</div>';
-    
+
                 // Send AJAX request to backend to process dispute
                 fetch('/process_dispute', {
                     method: 'POST',
@@ -447,12 +447,12 @@
                         resetUI();
                         return;
                     }
-    
+
                     const jobId = responseData.job_id;
-    
+
                     // Start polling for job result
                     pollJobResult(jobId);
-    
+
                 })
                 .catch((error) => {
                     console.error('Error:', error);
@@ -460,7 +460,7 @@
                     resetUI();
                 });
             });
-    
+
             // Polling function to check job status
             function pollJobResult(jobId) {
                 const interval = setInterval(() => {
@@ -487,7 +487,54 @@
                         });
                 }, 5000); // Poll every 5 seconds
             }
-    
+
+            // Function to format memo content
+            function formatMemoContent(memoContent) {
+                // Extract content between <memo> and </memo>
+                const memoRegex = /<memo>([\s\S]*?)<\/memo>/;
+                const memoMatch = memoContent.match(memoRegex);
+                if (!memoMatch) {
+                    // If no <memo> tags are found, return the original content
+                    return memoContent;
+                }
+                let content = memoMatch[1];
+
+                // Mapping of tags to headings
+                const tagHeadingMap = {
+                    '<brief_facts>': '<h3>Facts</h3>',
+                    '</brief_facts>': '',
+                    '<issues_involved>': '<h3>Legal Issues</h3>',
+                    '</issues_involved>': '',
+                    '<laws_involved>': '<h3>Laws Involved</h3>',
+                    '</laws_involved>': '',
+                    '<discussion_reasoning>': '<h3>Discussion</h3>',
+                    '</discussion_reasoning>': '',
+                    '<findings_conclusion>': '<h3>Findings</h3>',
+                    '</findings_conclusion>': '',
+                };
+
+                // Replace tags with headings
+                Object.keys(tagHeadingMap).forEach(tag => {
+                    const heading = tagHeadingMap[tag];
+                    const tagRegex = new RegExp(tag, 'g');
+                    content = content.replace(tagRegex, heading);
+                });
+
+                // Escape HTML in the content
+                content = content.replace(/&/g, '&amp;')
+                                 .replace(/</g, '&lt;')
+                                 .replace(/>/g, '&gt;');
+
+                // Restore headings (they should not be escaped)
+                content = content.replace(/&lt;h3&gt;/g, '<h3>')
+                                 .replace(/&lt;\/h3&gt;/g, '</h3>');
+
+                // Replace line breaks with <br>
+                content = content.replace(/\n/g, '<br>');
+
+                return content;
+            }
+
             // Function to handle the job result
             function handleJobResult(responseData) {
                 if (responseData.error) {
@@ -495,18 +542,18 @@
                     resetUI();
                     return;
                 }
-    
+
                 // Assign responseData to the higher scope variable
                 currentResponseData = responseData;
-    
+
                 // Initialize conversation with initial_conversation
                 conversation = responseData.initial_conversation;
-    
+
                 // Update the left section to display the chat interface
                 document.getElementById('left-section').innerHTML = ''; // Clear the loading indicator
                 document.getElementById('left-section').style.width = '66.66%';
                 document.getElementById('right-section').style.width = '33.33%';
-    
+
                 // Initialize the chat interface in left-section
                 document.getElementById('left-section').innerHTML = `
                     <div id="chat-container">
@@ -514,7 +561,7 @@
                         <div id="chat-window">
                             <!-- Messages will be appended here -->
                         </div>
-    
+
                         <!-- Chat Input -->
                         <div id="chat-input">
                             <textarea id="user-input" placeholder="Type your message here..."></textarea>
@@ -522,14 +569,17 @@
                         </div>
                     </div>
                 `;
-    
+
+                // Format the memo content
+                var formattedMemo = formatMemoContent(responseData.final_memo);
+
                 // Update the right section to display the three sections
                 var rightContent = '';
                 rightContent += '<div class="section" id="dispute-section">';
                 rightContent += '<h2>Legal Dispute</h2>';
-                rightContent += '<div class="content">' + formatText(disputeText) + '</div>';
+                rightContent += '<div class="content">' + formatText(disputeText, true) + '</div>';
                 rightContent += '</div>';
-    
+
                 rightContent += '<div class="section" id="case-titles-section">';
                 rightContent += '<h2>Legal Research</h2>';
                 rightContent += '<div class="content">';
@@ -538,55 +588,56 @@
                 });
                 rightContent += '</div>';
                 rightContent += '</div>';
-    
+
                 rightContent += '<div class="section" id="final-memo-section">';
                 rightContent += '<h2>Research Memo</h2>';
-                rightContent += '<div class="content">' + formatText(responseData.final_memo) + '</div>';
+                rightContent += '<div class="content">' + formattedMemo + '</div>';
                 rightContent += '</div>';
-    
+
                 document.getElementById('right-section').innerHTML = rightContent;
-    
+
                 // Add event listeners to the sections
                 document.getElementById('dispute-section').addEventListener('click', function() {
-                    showDocumentPreview('Legal Dispute', disputeText);
+                    showDocumentPreview('Legal Dispute', disputeText, true);
                 });
-    
+
                 document.getElementById('case-titles-section').addEventListener('click', function() {
                     var caseTitlesContent = '';
-                    responseData.cases.forEach(function(caseItem) {
+                    currentResponseData.cases.forEach(function(caseItem) {
                         caseTitlesContent += `<p class="case-title" data-doc-id="${caseItem.doc_id}" data-analysis-ids='${JSON.stringify(caseItem.analysis_reasoning_ids)}'>${caseItem.case_title}</p>`;
                     });
-                    showDocumentPreview('Legal Research', caseTitlesContent);
+                    showDocumentPreview('Legal Research', caseTitlesContent, false);
                 });
-    
+
                 document.getElementById('final-memo-section').addEventListener('click', function() {
-                    showDocumentPreview('Research Memo', responseData.final_memo);
+                    var formattedMemo = formatMemoContent(currentResponseData.final_memo);
+                    showDocumentPreview('Research Memo', formattedMemo, false); // escapeHtml = false
                 });
-    
+
                 // Handle chat input
                 const userInput = document.getElementById('user-input');
                 const sendButton = document.getElementById('send-button');
-    
+
                 userInput.addEventListener('input', function() {
                     const text = this.value.trim();
                     sendButton.disabled = text.length === 0;
                 });
-    
+
                 sendButton.addEventListener('click', function() {
                     const message = userInput.value.trim();
                     if (message.length === 0) return;
-    
+
                     // Add user message to chat window
                     addMessage('user', message);
                     userInput.value = '';
                     sendButton.disabled = true;
-    
+
                     // Append user message to conversation
                     conversation.push({
                         "role": "user",
                         "content": message
                     });
-    
+
                     // Ensure the number of user messages does not exceed 20
                     const userMessageCount = conversation.filter(msg => msg.role === 'user').length;
                     if (userMessageCount > 20) {
@@ -598,11 +649,11 @@
                             }
                         }
                     }
-    
+
                     // Send message to backend
                     sendMessageToBackend(message);
                 });
-    
+
                 // Add event listener to case titles
                 document.querySelectorAll('.case-title').forEach(function(element) {
                     element.addEventListener('click', function() {
@@ -612,17 +663,23 @@
                     });
                 });
             }
-    
-            function formatText(text) {
-                // Simple formatting, replace line breaks
+
+            function formatText(text, escapeHtml = true) {
+                if (escapeHtml) {
+                    // Escape HTML special characters to prevent XSS
+                    text = text.replace(/&/g, '&amp;')
+                               .replace(/</g, '&lt;')
+                               .replace(/>/g, '&gt;');
+                }
+                // Replace line breaks with <br>
                 return text.replace(/\n/g, '<br>');
             }
-    
-            function showDocumentPreview(title, content) {
+
+            function showDocumentPreview(title, content, escapeHtml = true) {
                 // Adjust widths
                 document.getElementById('left-section').style.width = '50%';
                 document.getElementById('right-section').style.width = '50%';
-    
+
                 // Display the document preview in right-section
                 var previewContent = '';
                 previewContent += '<div id="document-preview">';
@@ -630,29 +687,32 @@
                 previewContent += '<h2>' + title + '</h2>';
                 previewContent += '<button id="close-preview-button">&times;</button>';
                 previewContent += '</div>';
-                previewContent += '<div id="document-content">' + formatText(content) + '</div>';
+                previewContent += '<div id="document-content">' + formatText(content, escapeHtml) + '</div>';
                 previewContent += '</div>';
-    
+
                 document.getElementById('right-section').innerHTML = previewContent;
-    
+
                 // Add event listener to close button
                 document.getElementById('close-preview-button').addEventListener('click', function() {
                     // Restore the previous state
                     document.getElementById('left-section').style.width = '66.66%';
                     document.getElementById('right-section').style.width = '33.33%';
-    
+
                     // Rebuild the right section with the three sections using currentResponseData
                     if (!currentResponseData) {
                         alert('Error: No data available to restore the sections.');
                         return;
                     }
-    
+
+                    // Format the memo content
+                    var formattedMemo = formatMemoContent(currentResponseData.final_memo);
+
                     var rightContent = '';
                     rightContent += '<div class="section" id="dispute-section">';
                     rightContent += '<h2>Legal Dispute</h2>';
-                    rightContent += '<div class="content">' + formatText(disputeText) + '</div>';
+                    rightContent += '<div class="content">' + formatText(disputeText, true) + '</div>';
                     rightContent += '</div>';
-    
+
                     rightContent += '<div class="section" id="case-titles-section">';
                     rightContent += '<h2>Legal Research</h2>';
                     rightContent += '<div class="content">';
@@ -661,31 +721,32 @@
                     });
                     rightContent += '</div>';
                     rightContent += '</div>';
-    
+
                     rightContent += '<div class="section" id="final-memo-section">';
                     rightContent += '<h2>Research Memo</h2>';
-                    rightContent += '<div class="content">' + formatText(currentResponseData.final_memo) + '</div>';
+                    rightContent += '<div class="content">' + formattedMemo + '</div>';
                     rightContent += '</div>';
-    
+
                     document.getElementById('right-section').innerHTML = rightContent;
-    
+
                     // Re-add event listeners to the sections
                     document.getElementById('dispute-section').addEventListener('click', function() {
-                        showDocumentPreview('Legal Dispute', disputeText);
+                        showDocumentPreview('Legal Dispute', disputeText, true);
                     });
-    
+
                     document.getElementById('case-titles-section').addEventListener('click', function() {
                         var caseTitlesContent = '';
                         currentResponseData.cases.forEach(function(caseItem) {
                             caseTitlesContent += `<p class="case-title" data-doc-id="${caseItem.doc_id}" data-analysis-ids='${JSON.stringify(caseItem.analysis_reasoning_ids)}'>${caseItem.case_title}</p>`;
                         });
-                        showDocumentPreview('Legal Research', caseTitlesContent);
+                        showDocumentPreview('Legal Research', caseTitlesContent, false);
                     });
-    
+
                     document.getElementById('final-memo-section').addEventListener('click', function() {
-                        showDocumentPreview('Research Memo', currentResponseData.final_memo);
+                        var formattedMemo = formatMemoContent(currentResponseData.final_memo);
+                        showDocumentPreview('Research Memo', formattedMemo, false); // escapeHtml = false
                     });
-    
+
                     // Re-add event listeners to case titles
                     document.querySelectorAll('.case-title').forEach(function(element) {
                         element.addEventListener('click', function() {
@@ -695,29 +756,38 @@
                         });
                     });
                 });
+
+                // Attach event listeners to case titles within the document-content
+                document.querySelectorAll('#document-content .case-title').forEach(function(element) {
+                    element.addEventListener('click', function() {
+                        const docId = this.getAttribute('data-doc-id');
+                        const analysisIds = JSON.parse(this.getAttribute('data-analysis-ids'));
+                        fetchCaseDetails(docId, analysisIds, this.textContent);
+                    });
+                });
             }
-    
+
             function addMessage(sender, text) {
                 const chatWindow = document.getElementById('chat-window');
                 const messageDiv = document.createElement('div');
                 messageDiv.classList.add('message', sender);
-    
+
                 const bubbleDiv = document.createElement('div');
                 bubbleDiv.classList.add('bubble');
                 bubbleDiv.innerHTML = formatText(text);
-    
+
                 messageDiv.appendChild(bubbleDiv);
                 chatWindow.appendChild(messageDiv);
-    
+
                 // Scroll to bottom
                 chatWindow.scrollTop = chatWindow.scrollHeight;
             }
-    
+
             function scrollChatToBottom() {
                 const chatWindow = document.getElementById('chat-window');
                 chatWindow.scrollTop = chatWindow.scrollHeight;
             }
-    
+
             function sendMessageToBackend(message) {
                 fetch('/chat', {
                     method: 'POST',
@@ -732,10 +802,10 @@
                         alert(responseData.error);
                         return;
                     }
-    
+
                     // Update the conversation with the latest messages
                     conversation = responseData.conversation;
-    
+
                     // Add assistant message to chat window
                     addMessage('assistant', responseData.assistant_response);
                 })
@@ -744,7 +814,7 @@
                     alert('An error occurred while sending the message.');
                 });
             }
-    
+
             function resetUI() {
                 // Reset the UI to initial state
                 document.getElementById('header').style.display = 'block';
@@ -754,15 +824,15 @@
                 document.getElementById('dispute-input').value = '';
                 document.getElementById('lexplore-button').disabled = true;
             }
-    
+
             function fetchCaseDetails(docId, analysisIds, caseTitle) {
                 // Show loading indicators
                 document.getElementById('case-summary').innerHTML = '<p>Loading summary...</p>';
                 document.getElementById('case-text').innerHTML = '<p>Loading case text...</p>';
-    
+
                 // Show the popup
                 document.getElementById('case-popup').style.display = 'flex';
-    
+
                 // Fetch case details from backend
                 fetch('/get_case_details', {
                     method: 'POST',
@@ -781,10 +851,14 @@
                         document.getElementById('case-text').innerHTML = '';
                         return;
                     }
-    
+
                     // Display case summary
                     const summary = data.case_summary;
                     let summaryHtml = `<h3>${summary.case_title}</h3>`;
+                    // Display citations just below the case title
+                    if (summary.eq_citations && summary.eq_citations.length > 0) {
+                        summaryHtml += `<p><strong>Citations:</strong> ${summary.eq_citations.join('; ')}</p>`;
+                    }
                     summaryHtml += `<p><strong>Background Facts:</strong> ${summary.background_facts}</p>`;
                     summaryHtml += `<p><strong>Legal Issues:</strong> ${summary.legal_issues.map(issue => issue.text).join('; ')}</p>`;
                     summaryHtml += `<p><strong>Arguments:</strong> ${summary.arguments.map(arg => arg.text).join('; ')}</p>`;
@@ -799,17 +873,17 @@
                     summaryHtml += `<p><strong>Decision Order:</strong> ${summary.decision_order}</p>`;
                     summaryHtml += `<p><strong>Dissenting/Concurring Opinions:</strong> ${summary.dissenting_concurring.map(dc => dc.text).join('; ')}</p>`;
                     document.getElementById('case-summary').innerHTML = summaryHtml;
-    
+
                     // Display case text with highlights
                     const caseText = data.case_text;
                     let highlightedText = caseText;
-    
+
                     // Highlight paragraphs related to analysis_reasoning_ids
                     analysisIds.forEach(ar_id => {
                         const regex = new RegExp(`data-summary-cites="${ar_id}"`, 'g');
                         highlightedText = highlightedText.replace(regex, 'style="background-color: yellow;" data-summary-cites');
                     });
-    
+
                     document.getElementById('case-text').innerHTML = highlightedText;
                 })
                 .catch(error => {
@@ -818,12 +892,12 @@
                     document.getElementById('case-text').innerHTML = '';
                 });
             }
-    
+
             // Handle closing the popup
             document.getElementById('close-popup').addEventListener('click', function() {
                 document.getElementById('case-popup').style.display = 'none';
             });
-    
+
             // Optional: Close popup when clicking outside the popup content
             document.getElementById('case-popup').addEventListener('click', function(event) {
                 if (event.target === this) {
@@ -832,6 +906,6 @@
             });
         });
     </script>
-    
+
 </body>
 </html>

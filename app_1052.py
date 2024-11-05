@@ -75,6 +75,8 @@ def process_dispute():
         if not factual_dispute:
             return jsonify({'error': 'No factual dispute provided'}), 400
 
+        print(factual_dispute)
+
         # Generate a unique job ID
         job_id = str(uuid.uuid4())
 
@@ -105,8 +107,8 @@ def process_dispute_in_background(factual_dispute, job_id):
         # if not factual_dispute:
         #     return jsonify({'error': 'No factual dispute provided'}), 400
 
-        print(NEO4J_URI)
-        print(NEO4J_PASSWORD)
+        # print(NEO4J_URI)
+        # print(NEO4J_PASSWORD)
 
 
         # Combine the dispute, questions, and answers
@@ -338,6 +340,8 @@ def chat():
         conversation = data.get('conversation', [])
         user_task = data.get('user_task', '').strip()
 
+        print(user_task)
+
         if not user_task:
             return jsonify({'error': 'No user task provided'}), 400
 
@@ -375,6 +379,8 @@ def chat():
 
         # Call the Claude API
         assistant_response = call_claude_api(messages_for_api)
+
+        print(assistant_response)
 
         # Append assistant response to the conversation
         conversation.append({
@@ -728,13 +734,14 @@ def get_case_law_summaries(tx, document_ids):
         RETURN {
             document_id: id(d),
             case_title: d.case_title,
+            eq_citations: coalesce(d.eq_citations, []),
             background_facts: bf.final_text,
             legal_issues: [issue IN legal_issues WHERE issue.text IS NOT NULL | issue],
             arguments: [arg IN arguments WHERE arg.text IS NOT NULL | arg],
             analysis_reasoning: [ar IN analysis_reasoning WHERE ar.text IS NOT NULL | ar],
             decision_order: do.final_text,
             dissenting_concurring: [dco IN dissenting_concurring WHERE dco.text IS NOT NULL | dco]
-        } AS summary
+        } AS summary 
         """
         result = tx.run(query, document_ids=document_ids)
         return [record['summary'] for record in result]
@@ -763,6 +770,7 @@ def get_case_law_summaries_by_ids(tx, document_ids):
         RETURN {
             document_id: id(d),
             case_title: d.case_title,
+            eq_citations: coalesce(d.eq_citations, []),
             background_facts: bf.final_text,
             legal_issues: [issue IN legal_issues WHERE issue.text IS NOT NULL | issue],
             arguments: [arg IN arguments WHERE arg.text IS NOT NULL | arg],
@@ -962,6 +970,11 @@ def generate_final_memo(factual_dispute, case_laws_with_paragraphs, case_law_sum
             case_laws_text = ''
             for case in case_laws:
                 case_laws_text += f"<{case['case_title']}>\n"
+                eq_citations = case.get('eq_citations') or []
+                case_laws_text += f"<citations>\n"
+                for citation in eq_citations:
+                    case_laws_text += f"{citation}\n"
+                case_laws_text += "</citations>\n"
                 case_laws_text += f"<background_facts>\n{case.get('background_facts', '')}\n</background_facts>\n"
                 case_laws_text += "<legal_issues>\n"
                 for issue in case.get('legal_issues', []):
@@ -998,7 +1011,7 @@ def generate_final_memo(factual_dispute, case_laws_with_paragraphs, case_law_sum
         else:
             case_laws_text = case_laws_text_with_paragraphs
 
-        prompt = f"""You are tasked with formulating a draft reasoned memo on a legal dispute using relevant precedents. Your memo should follow a specific structure and adhere to certain parameters for effective legal analysis. Here are the details of the dispute and precedents:\n\n<relevant_precedents>\n{case_laws_text}\n</relevant_precedents>\n\n<legal_dispute>\n{factual_dispute}\n</legal_dispute>\n\nYour task is to create a well-structured legal memo addressing this dispute. The memo should contain the following sections:\n\n1. Brief facts\n2. Issues involved\n3. Laws involved\n4. Discussion/Reasoning\n5. Findings/Conclusion\n\nFor each section, follow these guidelines:\n\n1. Brief facts:\n   Summarize the key facts of the dispute concisely. Include only the most relevant information necessary for understanding the legal issues at hand.\n\n2. Issues involved:\n   Identify and clearly state the main legal questions or issues that need to be addressed in this dispute. Frame these as specific questions that your memo will answer.\n\n3. Laws involved:\n   List and briefly explain the relevant laws, statutes, or legal principles that apply to this case. Reference specific sections or articles where applicable.\n\n4. Discussion/Reasoning:\n   This should be the most substantial part of your memo. Analyze the facts in light of the relevant laws and precedents. Consider the following:\n   - Explain how the law applies to the specific facts of this case\n   - Discuss any relevant precedents and how they relate to the current dispute\n   - Address potential counterarguments or alternative interpretations\n   - Use logical reasoning to support your analysis\n    \n    Ensure that your memo reads professionally and is appropriate for a legal audience. Provide in-depth reasoning, citing specific facts and legal principles, and explain how they interconnect.\n\n5. Findings/Conclusion:\n   Based on your analysis, provide a clear conclusion for each issue identified. State your opinion on how the dispute should be resolved and why.\n\nThroughout your memo, pay attention to the following parameters:\n\na) Ability to use relevant legal sources: Cite and apply the provided precedents appropriately. Demonstrate how these sources support your reasoning.\n\nb) Use of legal language: Employ proper legal terminology and phrasing throughout your memo. Avoid colloquialisms and use formal language.\n\nc) Exposition of the law: Clearly explain the relevant laws and legal principles. Ensure that your explanation reads professionally and is appropriate for a legal audience.\n\nd) Analysis of the facts and applicability of the law to the facts: Show a clear connection between the facts of the case and the laws you're applying. Explain why certain laws are relevant and how they should be interpreted in this specific context.\n\ne) Structure of the opinion: Follow the outlined structure closely. Use clear headings for each section and ensure a logical flow of ideas throughout the memo.\n\nFormat your response as follows:\n\n<memo>\n<brief_facts>\n[Your content here]\n</brief_facts>\n\n<issues_involved>\n[Your content here]\n</issues_involved>\n\n<laws_involved>\n[Your content here]\n</laws_involved>\n\n<discussion_reasoning>\n[Your content here]\n</discussion_reasoning>\n\n<findings_conclusion>\n[Your content here]\n</findings_conclusion>\n</memo>\n\nEnsure that your memo is well-organized, logically structured, and professionally written. Use paragraph breaks within sections to improve readability. Cite specific laws, precedents, or facts from the provided information where relevant.
+        prompt = f"""You are tasked with formulating a draft reasoned memo on a legal dispute using relevant precedents. Your memo should follow a specific structure and adhere to certain parameters for effective legal analysis. Here are the details of the dispute and precedents:\n\n<relevant_precedents>\n{case_laws_text}\n</relevant_precedents>\n\n<legal_dispute>\n{factual_dispute}\n</legal_dispute>\n\nYour task is to create a well-structured legal memo addressing this dispute. The memo should contain the following sections:\n\n1. Brief facts\n2. Issues involved\n3. Laws involved\n4. Discussion/Reasoning\n5. Findings/Conclusion\n\nFor each section, follow these guidelines:\n\n1. Brief facts:\n   Summarize the key facts of the dispute concisely. Include only the most relevant information necessary for understanding the legal issues at hand.\n\n2. Issues involved:\n   Identify and clearly state the main legal questions or issues that need to be addressed in this dispute. Frame these as specific questions that your memo will answer.\n\n3. Laws involved:\n   List and briefly explain the relevant laws, statutes that apply to this case. Reference specific sections or articles where applicable.\n\n4. Discussion/Reasoning:\n   This should be the most substantial part of your memo. Analyze the facts in light of the relevant laws and precedents. Consider the following:\n   - Explain how the law applies to the specific facts of this case\n   - Discuss any relevant precedents and how they relate to the current dispute\n   - Address potential counterarguments or alternative interpretations\n   - Use logical reasoning to support your analysis\n    \n    Ensure that your memo reads professionally and is appropriate for a legal audience. Provide in-depth reasoning, citing specific facts and legal principles, and explain how they interconnect.\n\n5. Findings/Conclusion:\n   Based on your analysis, provide a clear conclusion for each issue identified. State your opinion on how the dispute should be resolved and why.\n\nThroughout your memo, pay attention to the following parameters:\n\na) Ability to use relevant legal sources: Cite and apply the provided precedents appropriately. Demonstrate how these sources support your reasoning.\n\nb) Use of legal language: Employ proper legal terminology and phrasing throughout your memo. Avoid colloquialisms and use formal language.\n\nc) Exposition of the law: Clearly explain the relevant laws and legal principles. Ensure that your explanation reads professionally and is appropriate for a legal audience.\n\nd) Analysis of the facts and applicability of the law to the facts: Show a clear connection between the facts of the case and the laws you're applying. Explain why certain laws are relevant and how they should be interpreted in this specific context.\n\ne) Structure of the opinion: Follow the outlined structure closely. Use clear headings for each section and ensure a logical flow of ideas throughout the memo.\n\nFormat your response as follows:\n\n<memo>\n<brief_facts>\n[Your content here]\n</brief_facts>\n\n<issues_involved>\n[Your content here]\n</issues_involved>\n\n<laws_involved>\n[Your content here]\n</laws_involved>\n\n<discussion_reasoning>\n[Your content here]\n</discussion_reasoning>\n\n<findings_conclusion>\n[Your content here]\n</findings_conclusion>\n</memo>\n\nEnsure that your memo is well-organized, logically structured, and professionally written. Use paragraph breaks within sections to improve readability. Cite specific laws, precedents, or facts from the provided information where relevant.
 
 """
 
@@ -1030,6 +1043,11 @@ def generate_final_memo_prompt(factual_dispute, case_laws_with_paragraphs, case_
         case_laws_text = ''
         for case in case_laws:
             case_laws_text += f"<{case['case_title']}>\n"
+            eq_citations = case.get('eq_citations') or []
+            case_laws_text += f"<citations>\n"
+            for citation in eq_citations:
+                case_laws_text += f"{citation}\n"
+            case_laws_text += "</citations>\n"
             case_laws_text += f"<background_facts>\n{case.get('background_facts', '')}\n</background_facts>\n"
             case_laws_text += "<legal_issues>\n"
             for issue in case.get('legal_issues', []):
@@ -1093,7 +1111,7 @@ For each section, follow these guidelines:
    Identify and clearly state the main legal questions or issues that need to be addressed in this dispute. Frame these as specific questions that your memo will answer.
 
 3. Laws involved:
-   List and briefly explain the relevant laws, statutes, or legal principles that apply to this case. Reference specific sections or articles where applicable. For each law, briefly explain how it is pertinent to the issues at hand.
+   List and briefly explain the relevant laws, statutes that apply to this case. Reference specific sections or articles where applicable. For each law, briefly explain how it is pertinent to the issues at hand.
 
 4. Discussion/Reasoning:
    This should be the most substantial part of your memo. Analyze the facts in light of the relevant laws and precedents. Consider the following:
@@ -1187,6 +1205,7 @@ def get_case_summary(tx, document_id):
             COLLECT(DISTINCT {text: dco.final_text, index: coalesce(dco.index, 0)}) AS dissenting_concurring
         RETURN {
             case_title: d.case_title,
+            eq_citations: coalesce(d.eq_citations, []),
             background_facts: bf.final_text,
             legal_issues: [issue IN legal_issues WHERE issue.text IS NOT NULL | issue],
             arguments: [arg IN arguments WHERE arg.text IS NOT NULL | arg],
