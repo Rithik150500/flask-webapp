@@ -13,17 +13,18 @@ import uuid
 app = Flask(__name__)
 
 # Load configuration from environment variables
-# NEO4J_URI = os.environ.get('NEO4J_URI', 'bolt://localhost:7687')
-NEO4J_URI = os.environ.get('NEO4J_URI', 'neo4j+s://f836b6b0.databases.neo4j.io')
-
+NEO4J_URI = os.environ.get('NEO4J_URI', 'bolt://localhost:7687')
+# NEO4J_URI = os.environ.get('NEO4J_URI', 'neo4j+s://f836b6b0.databases.neo4j.io')
 NEO4J_USERNAME = os.environ.get('NEO4J_USERNAME', 'neo4j')
-#NEO4J_PASSWORD = os.environ.get('NEO4J_PASSWORD', 'sc_graph_db')
-NEO4J_PASSWORD = os.environ.get('NEO4J_PASSWORD', '58viJiu1S_VTKqmitzn6WnDkaYdcr7WiMrlvAGSzyHY')
+NEO4J_PASSWORD = os.environ.get('NEO4J_PASSWORD', 'sc_graph_db')
+# NEO4J_PASSWORD = os.environ.get('NEO4J_PASSWORD', '58viJiu1S_VTKqmitzn6WnDkaYdcr7WiMrlvAGSzyHY')
 #gpodQl3XhiIR7cHnG5sbAx7n8BOuWdCeSio8w0q8BB8
 #58viJiu1S_VTKqmitzn6WnDkaYdcr7WiMrlvAGSzyHY
 
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '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')
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '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')
+
+# ANTHROPIC_API_KEY = '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'
 
 # Ensure API keys are set
 if not OPENAI_API_KEY or OPENAI_API_KEY == '':
@@ -96,6 +97,23 @@ def process_dispute():
         return jsonify({'error': 'An error occurred while processing the dispute.'}), 500
 
 
+@app.route('/submit_case_file', methods=['POST'])
+def submit_case_file():
+    try:
+        data = request.get_json()
+        case_file_content = data.get('case_file_content', '').strip()
+        if not case_file_content:
+            return jsonify({'error': 'No case file content provided'}), 400
+
+        # Call the function to process the case file
+        case_brief, factual_narrative = process_case_file(case_file_content)
+
+        return jsonify({'case_brief': case_brief, 'factual_narrative': factual_narrative})
+
+    except Exception as e:
+        print(f"Error in submit_case_file: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'error': 'An error occurred while processing the case file.'}), 500
 
 
 def process_dispute_in_background(factual_dispute, job_id):
@@ -107,8 +125,11 @@ def process_dispute_in_background(factual_dispute, job_id):
         # if not factual_dispute:
         #     return jsonify({'error': 'No factual dispute provided'}), 400
 
-        # print(NEO4J_URI)
-        # print(NEO4J_PASSWORD)
+        print(NEO4J_URI)
+        print(NEO4J_PASSWORD)
+
+        print(ANTHROPIC_API_KEY)
+        print(OPENAI_API_KEY)
 
 
         # Combine the dispute, questions, and answers
@@ -124,6 +145,10 @@ def process_dispute_in_background(factual_dispute, job_id):
 
         print("Initial Memo:", memo_text)
         print("Case Names:", case_names)
+
+        # Update job status
+        jobs[job_id]['current_step'] = 'initial_memo_done'
+        jobs[job_id]['case_names'] = case_names
 
         # Step 2: Generate embeddings
         dispute_embedding = create_embedding(factual_dispute)
@@ -207,6 +232,8 @@ def process_dispute_in_background(factual_dispute, job_id):
         # Parse selected case laws to get doc_ids and analysis_reasoning_ids
         selected_case_laws = parse_selected_case_laws(selected_case_laws_text)
 
+        print("Selected Case Laws Text:", selected_case_laws)
+
         # Add case document IDs directly to selected case laws with all analysis_reasoning_ids
         with driver.session() as session:
             for doc_id in case_document_ids:
@@ -220,6 +247,8 @@ def process_dispute_in_background(factual_dispute, job_id):
 
         if not selected_case_laws:
             return jsonify({'error': 'No relevant case laws selected.'}), 404
+
+        
 
         # Get the paragraphs for the selected analysis reasoning ids
         analysis_reasoning_ids = []
@@ -236,6 +265,23 @@ def process_dispute_in_background(factual_dispute, job_id):
 
         # Prepare data for the final memo
         case_laws_with_paragraphs = merge_case_law_summaries_with_paragraphs(case_law_summaries, paragraphs)
+
+        response = {
+            # ... existing code ...
+            'cases': [
+                {
+                    'doc_id': case['doc_id'],
+                    'case_title': doc_id_to_case_title.get(case['doc_id'], ''),
+                    'analysis_reasoning_ids': case['analysis_reasoning_ids']
+                }
+                for case in selected_case_laws
+            ],
+            # ... existing code ...
+        }
+
+        # Update job status
+        jobs[job_id]['current_step'] = 'cases_found'
+        jobs[job_id]['cases'] = response['cases']
 
         # Step 5: Generate final research memo
         final_memo = generate_final_memo(factual_dispute, case_laws_with_paragraphs, case_law_summaries)
@@ -290,14 +336,25 @@ def get_job_result():
 
     job = jobs[job_id]
     if job['status'] == 'completed':
-        # Optionally, remove the job from the dictionary if you don't need it anymore
-        # del jobs[job_id]
         return jsonify({'status': 'completed', 'result': job['result']})
     elif job['status'] == 'failed':
-        # del jobs[job_id]
         return jsonify({'status': 'failed', 'result': job['result']})
+    elif job.get('current_step') == 'initial_memo_done':
+        return jsonify({
+            'status': 'processing',
+            'current_step': 'initial_memo_done',
+            'case_names': job.get('case_names', [])
+        })
+    elif job.get('current_step') == 'cases_found':
+        return jsonify({
+            'status': 'processing',
+            'current_step': 'cases_found',
+            'cases': job.get('cases', [])
+        })
     else:
-        return jsonify({'status': 'processing'})
+        return jsonify({'status': 'processing', 'current_step': job.get('current_step', 'processing')})
+
+
 
 
 
@@ -397,7 +454,6 @@ def chat():
         return jsonify({'error': 'An error occurred while processing the chat.'}), 500
 
 
-
 @app.route('/get_case_details', methods=['POST'])
 def get_case_details():
     try:
@@ -409,11 +465,19 @@ def get_case_details():
             return jsonify({'error': 'No document ID provided'}), 400
 
         with driver.session() as session:
-            # Fetch case summary
-            case_summary = session.read_transaction(get_case_summary, document_id)
+            # Fetch case summary with highlighting and referred cases
+            case_summary = session.read_transaction(
+                get_case_summary, document_id, analysis_reasoning_ids
+            )
+
+            # If no analysis_reasoning_ids provided, remove 'cases_referred' to prevent infinite loops
+            if not analysis_reasoning_ids:
+                case_summary.pop('cases_referred', None)
 
             # Fetch case text (paragraphs)
-            case_text = session.read_transaction(get_case_text, document_id, analysis_reasoning_ids)
+            case_text = session.read_transaction(
+                get_case_text, document_id, analysis_reasoning_ids
+            )
 
         response = {
             'case_summary': case_summary,
@@ -426,10 +490,209 @@ def get_case_details():
         print(f"Error in get_case_details: {str(e)}")
         traceback.print_exc()
         return jsonify({'error': 'An error occurred while fetching case details.'}), 500
-    
 
 
+def process_case_file(case_file_content):
+    try:
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
+        # Step 1: Generate Case Brief
+        prompt_case_brief = f"""You are a skilled legal professional tasked with preparing a comprehensive case brief.  You are tasked with preparing a comprehensive, multi-dimensional case brief that goes beyond standard summaries. Your goal is to summarize the key aspects of a legal case clearly, adhering to specific formatting and content guidelines.
+
+1. Provide a rich, narrative-driven analysis that captures legal nuances
+2. Include forensic-level details about evidence, testimonies, and court reasoning
+3. Present a holistic view of the case that serves both quick comprehension and deep legal analysis
+
+First, carefully read the following case file:
+
+<case_file>
+{case_file_content}
+</case_file>
+
+Now, prepare a case brief based on this file. Follow these instructions:
+
+1. Structure: Your brief must include these sections in order:
+   a) Name of the Parties
+   b) Relevant Facts of the Case
+   c) Relevant Findings of the Judgment/Order Under Challenge
+   d) Main Grounds of the Challenge
+   e) Prayer (if applicable)
+   f) Interlocutory Applications (if applicable)
+   g) Counter Affidavits/Rejoinder Affidavits/Further Affidavits (if filed)
+   h) Gist of Previous Orders (Record of Proceedings/Office Reports, if any)
+
+2. Content Guidelines:
+   - Be clear and informative, providing a summary of the case.
+   - Include references to relevant annexures, paragraph numbers, or page numbers of the impugned judgment in parentheses.
+   - Maintain a neutral perspective, presenting only facts without personal opinions or biases.
+   - Aim for effectively summarizing key points.
+   - Omit unnecessary details like appeal numbers or specific proceeding numbers unless crucial to the context.
+   - If there's a delay in filing the Petition or proceeding, mention the nature and extent of the delay with the provided explanation.
+   - Identify and emphasize the core substance of the case.
+   - If challenging a subordinate court or tribunal's judgment, include the ratio decidendi (legal reasoning) of the impugned judgment.
+
+3. Analysis Process:
+   Before writing your final brief, break down the case file inside <case_file_breakdown> tags. In this section:
+   - Identify the key parties involved and quote the relevant parts of the case file that name them.
+   - List the most relevant facts and provide supporting quotes from the case file.
+   - Summarize the main findings of the judgment under challenge, quoting the specific language used in the judgment.
+   - Outline the primary grounds for the challenge, referencing specific arguments made in the case file.
+   - Note any prayers, interlocutory applications, or counter affidavits, quoting them directly if present.
+   - Highlight any previous orders or proceedings that are significant, providing dates and brief summaries.
+   - For each element, explain briefly why you consider it important for the case brief.
+
+   It's okay for this section to be quite long, as thorough analysis will lead to a better final brief.
+
+* Aim to create a brief that serves multiple audiences: quick-reference for busy lawyers, deep-dive for researchers
+* Your brief should read like a compelling legal narrative, not just a dry recitation of facts
+* Demonstrate how individual pieces of facts contribute to the overall judicial reasoning
+
+* Use a holistic, interconnected approach to case analysis
+* Show how different pieces of evidence interact
+* Highlight the judicial thought process
+* Provide insights into potential future legal interpretations
+
+4. Final Output:
+   After your analysis, present your case brief using the following structure:
+
+   <case_brief>
+   <parties>[Name of the Parties]</parties>
+
+   <facts>[Relevant Facts of the Case]</facts>
+
+   <findings>[Relevant Findings of the Judgment/Order Under Challenge]</findings>
+
+   <grounds>[Main Grounds of the Challenge]</grounds>
+
+   <prayer>[Prayer (if applicable)]</prayer>
+
+   <applications>[Interlocutory Applications (if applicable)]</applications>
+
+   <affidavits>[Counter Affidavits/Rejoinder Affidavits/Further Affidavits (if filed)]</affidavits>
+
+   <previous_orders>[Gist of Previous Orders (Record of Proceedings/Office Reports, if any)]</previous_orders>
+   </case_brief>
+
+Remember to maintain objectivity, and clarity throughout your brief. Ensure that you've included all relevant information while adhering to the specified structure and guidelines.
+"""
+        response_brief = client.messages.create(
+            model="claude-3-5-haiku-20241022",
+            max_tokens=8192,
+            temperature=0,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt_case_brief
+                        }
+                    ]
+                }
+            ]
+        )
+
+        print(''.join(block.text for block in response_brief.content))
+
+        # Extract the <case_brief> content
+        case_brief_match = re.search(r'<case_brief>(.*?)</case_brief>', ''.join(block.text for block in response_brief.content), re.DOTALL)
+        if case_brief_match:
+            case_brief = case_brief_match.group(1).strip()
+        else:
+            case_brief = response_brief.completion.strip()
+
+        # Step 2: Generate Factual Narrative (continue the conversation)
+        prompt_narrative = """You are a skilled legal analyst tasked with extracting and summarizing the factual dispute from a legal case file. Your goal is to provide a detailed and comprehensive narrative that will be useful for legal professionals, including extensive contextual information that enriches the understanding of the case.
+
+Analyze the legal case file
+
+After reading the case file, your task is to analyze the information and provide a detailed narrative of the factual dispute. Follow these steps:
+
+1. Analyze the case file: Break down the key components of the case inside <case_breakdown> tags. Include the following:
+
+Identify all parties involved in the case, including plaintiffs, defendants, appellants, respondents, petitioners, and any other relevant individuals or entities.
+Provide comprehensive background information about the parties, including personal relationships, professional roles, history, and any relevant anecdotes that offer deeper insight.
+List the key events that led to the dispute in detail, including specific dates, locations, dialogues, and actions taken by each party. Describe the circumstances and atmosphere surrounding these events.
+Identify any agreements, contracts, or informal arrangements involved, elaborating on their terms, the context in which they were made, and their significance to the parties.
+Outline the main points of contention between the parties, including underlying motivations, personal conflicts, and any external factors contributing to the dispute.
+Describe any relevant legal proceedings, including detailed accounts of judgments from lower courts, appeals, legal strategies employed, and reactions from the parties.
+For each component, quote relevant passages from the case file to support your analysis. Include additional details and context that, while not directly related to the core legal issues, provide valuable background and depth to the narrative. Also, list any missing information or ambiguities you notice in the case file.
+
+2. Summarize the factual dispute: Based on your analysis, create a detailed narrative of the factual dispute. Use the following structure:
+
+<factual_dispute_summary>
+
+Introduce all the parties involved, providing rich background information and setting the stage for the dispute.
+
+Offer an in-depth background, including personal histories, relationships between the parties, prior interactions, and any events that set the context for the current dispute.
+
+Narrate the sequence of events leading to the dispute in a detailed and engaging manner. Include descriptions of settings, conversations, and actions, capturing the nuances and complexities of the situation.
+
+Elaborate on the main issues or disagreements, delving into the motivations, emotions, and perspectives of each party. Discuss any relevant side issues or subplots that contribute to the overall dispute.
+
+Provide a comprehensive overview of any legal actions taken, including detailed accounts of court proceedings, legal arguments, decisions, and the impact on the parties involved.
+
+</factual_dispute_summary>
+
+Important guidelines:
+Maintain an objective and neutral tone, even as you provide detailed descriptions.
+Use vivid and descriptive language to create an engaging and informative narrative.
+Include extensive contextual information, even if it's not directly related to the core legal issues, to enrich the reader's understanding.
+Organize the information logically, preferably in chronological order, to ensure the narrative flows smoothly.
+Ensure your summary is comprehensive and detailed, capturing all essential elements and nuances of the dispute.
+
+Begin your response with your case breakdown, followed by the factual dispute summary.
+"""
+
+        response_narrative = client.messages.create(
+            model="claude-3-5-haiku-20241022",
+            max_tokens=8192,
+            temperature=0,
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt_case_brief
+                        }
+                    ]
+                },
+                {
+                    "role": "assistant",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": ''.join(block.text for block in response_brief.content)
+                        }
+                    ]
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt_narrative
+                        }
+                    ]
+                }
+            ]
+        )
+
+        print(''.join(block.text for block in response_narrative.content))
+
+        # Extract the <factual_dispute_summary> content
+        narrative_match = re.search(r'<factual_dispute_summary>(.*?)</factual_dispute_summary>', ''.join(block.text for block in response_narrative.content), re.DOTALL)
+        if narrative_match:
+            factual_narrative = narrative_match.group(1).strip()
+        else:
+            factual_narrative = response_narrative.completion.strip()
+
+        return case_brief, factual_narrative
+
+    except Exception as e:
+        print(f"Error processing case file: {str(e)}")
+        raise
 
 
 def generate_clarificatory_questions(legal_dispute):
@@ -538,7 +801,9 @@ def generate_initial_memo(factual_dispute):
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
         prompt = f"""You are tasked with formulating a draft reasoned memo on a legal dispute using relevant precedents. Before drafting the memo, you must conduct thorough legal research. Your research should focus on finding relevant case laws, statutes, and legal principles, with a preference for precedents set by the Supreme Court of India. After completing your research, proceed to draft the memo following the structure and guidelines provided below. Your memo should follow a specific structure and adhere to certain parameters for effective legal analysis. Here are the details of the dispute:\n\n<legal_dispute>\n{factual_dispute}\n</legal_dispute>
 
-Your task is to create a well-structured legal memo addressing this dispute. The memo should contain the following sections:\n\n1. Brief facts\n2. Issues involved\n3. Laws involved\n4. Discussion/Reasoning\n5. Findings/Conclusion\n\nFor each section, follow these guidelines:\n\n1. Brief facts:\n   Summarize the key facts of the dispute concisely. Include only the most relevant information necessary for understanding the legal issues at hand.\n\n2. Issues involved:\n   Identify and clearly state the main legal questions or issues that need to be addressed in this dispute. Frame these as specific questions that your memo will answer.\n\n3. Laws involved:\n   List and briefly explain the relevant laws, statutes, or legal principles that apply to this case. Reference specific sections or articles where applicable. For each law, briefly explain how it is pertinent to the issues at hand.\n\n4. Discussion/Reasoning:\n   This should be the most substantial part of your memo. Analyze the facts in light of the relevant laws and precedents. Consider the following:\n   - Explain how the law applies to the specific facts of this case\n   - Discuss any relevant precedents and how they relate to the current dispute\n   - Address potential counterarguments or alternative interpretations\n   - Use logical reasoning to support your analysis\n    \n    Ensure that your memo reads professionally and is appropriate for a legal audience. Provide in-depth reasoning, citing specific facts and legal principles, and explain how they interconnect.\n\n5. Findings/Conclusion:\n   Based on your analysis, provide a clear conclusion for each issue identified. State your opinion on how the dispute should be resolved and why.\n\nThroughout your memo, pay attention to the following parameters:\n\na) Ability to use relevant legal sources: Cite and apply the provided precedents appropriately. Demonstrate how these sources support your reasoning.\n\nb) Use of legal language: Employ proper legal terminology and phrasing throughout your memo. Avoid colloquialisms and use formal language.\n\nc) Exposition of the law: Clearly explain the relevant laws and legal principles. Ensure that your explanation reads professionally and is appropriate for a legal audience.\n\nd) Analysis of the facts and applicability of the law to the facts: Show a clear connection between the facts of the case and the laws you're applying. Explain why certain laws are relevant and how they should be interpreted in this specific context.\n\ne) Structure of the opinion: Follow the outlined structure closely. Use clear headings for each section and ensure a logical flow of ideas throughout the memo.\n\nFormat your response as follows:\n\n<memo>\n<brief_facts>\n[Your content here]\n</brief_facts>\n\n<issues_involved>\n[Your content here]\n</issues_involved>\n\n<laws_involved>\n[Your content here]\n</laws_involved>\n\n<discussion_reasoning>\n[Your content here]\n</discussion_reasoning>\n\n<findings_conclusion>\n[Your content here]\n</findings_conclusion>\n</memo>\n\n. After drafting the memo, please provide a separate section listing all the case laws and precedents you researched and cited in the memo. Prioritize Supreme Court of India judgments, but include other relevant cases if necessary. Format this section as follows:
+Your task is to create a well-structured legal memo addressing this dispute. The memo should contain the following sections:\n\n1. Brief facts\n2. Issues involved\n3. Laws involved\n4. Discussion/Reasoning\n5. Findings/Conclusion\n\nFor each section, follow these guidelines:\n\n1. Brief facts:\n   Summarize the key facts of the dispute concisely. Include only the most relevant information necessary for understanding the legal issues at hand.\n\n2. Issues involved:\n   Identify and clearly state the main legal questions or issues that need to be addressed in this dispute. Frame these as specific questions that your memo will answer.\n\n3. Laws involved:\n   List and briefly explain the relevant laws, statutes, or legal principles that apply to this case. Reference specific sections or articles where applicable. For each law, briefly explain how it is pertinent to the issues at hand.\n\n4. 
+Discussion/Reasoning:\n   This should be the most substantial part of your memo. Analyze the facts in light of the relevant laws and precedents. Consider the following:\n   - Explain how the law applies to the specific facts of this case\n   - Discuss any relevant precedents and how they relate to the current dispute\n   - Address potential counterarguments or alternative interpretations\n   - Use logical reasoning to support your analysis\n    \n    Ensure that your memo reads professionally and is appropriate for a legal audience. Provide in-depth reasoning, citing specific facts and legal principles, and explain how they interconnect.
+\n\n5. Findings/Conclusion:\n   Based on your analysis, provide a clear conclusion for each issue identified. State your opinion on how the dispute should be resolved and why.\n\nThroughout your memo, pay attention to the following parameters:\n\na) Ability to use relevant legal sources: Cite and apply the provided precedents appropriately. Demonstrate how these sources support your reasoning.\n\nb) Use of legal language: Employ proper legal terminology and phrasing throughout your memo. Avoid colloquialisms and use formal language.\n\nc) Exposition of the law: Clearly explain the relevant laws and legal principles. Ensure that your explanation reads professionally and is appropriate for a legal audience.\n\nd) Analysis of the facts and applicability of the law to the facts: Show a clear connection between the facts of the case and the laws you're applying. Explain why certain laws are relevant and how they should be interpreted in this specific context.\n\ne) Structure of the opinion: Follow the outlined structure closely. Use clear headings for each section and ensure a logical flow of ideas throughout the memo.\n\nFormat your response as follows:\n\n<memo>\n<brief_facts>\n[Your content here]\n</brief_facts>\n\n<issues_involved>\n[Your content here]\n</issues_involved>\n\n<laws_involved>\n[Your content here]\n</laws_involved>\n\n<discussion_reasoning>\n[Your content here]\n</discussion_reasoning>\n\n<findings_conclusion>\n[Your content here]\n</findings_conclusion>\n</memo>\n\n. After drafting the memo, please provide a separate section listing all the case laws and precedents you researched and cited in the memo. Prioritize Supreme Court of India judgments, but include other relevant cases if necessary. Format this section as follows:
 <researched_cases>
 
 [Case name] [(Year)]
@@ -849,31 +1114,32 @@ Analyze each case law summary carefully and select those that are most relevant 
 2. Legal principles discussed
 3. Reasoning applied by the court
 4. Outcome of the case
-5. If the case law is relevant, identify the most relevant analysis_reasoning_ids (usually just one)
+5. If the case law is relevant, identify the most relevant analysis_reasoning_id
 
 Select case laws that you believe should be researched further. For each selected case law:
 1. Note the doc_id
-2. Identify the most relevant analysis_reasoning_ids (usually just one)
+2. Identify the most relevant analysis_reasoning_id
 
 Important guidelines:
 - Aim for a comprehensive selection of relevant case laws
 - Include cases that offer different perspectives or interpretations
 - Consider both supporting and opposing viewpoints
-- For each selected case, choose only the most relevant analysis_reasoning_ids (usually just one)
+- For each selected case, choose only the most relevant analysis_reasoning_ids (just one)
 
 After your analysis, provide your output in the following format:
 
 <selected_case_laws>
 <case_law>
 <doc_id>[Insert doc_id here]</doc_id>
-<relevant_analysis_ids>
 <analysis_id>[Insert most relevant analysis_reasoning_id]</analysis_id>
-</relevant_analysis_ids>
 </case_law>
 [Repeat for each selected case law]
 </selected_case_laws>
 
-Remember, your selection of case laws should be comprehensive, but the analysis_reasoning_ids for each case should be limited to the most relevant ones. If you're unsure about including a case law, err on the side of inclusion. The goal is to ensure a thorough foundation for further research while focusing on the most pertinent legal reasoning.
+Remember, your selection of case laws should be comprehensive, but the analysis_reasoning_id for each case should be limited to the most relevant one. If you're unsure about including a case law, err on the side of inclusion. The goal is to ensure a thorough foundation for further research while focusing on the most pertinent legal reasoning.
+
+
+It's ok for your response being very long.
 
 """
 
@@ -900,20 +1166,44 @@ Remember, your selection of case laws should be comprehensive, but the analysis_
 
 def parse_selected_case_laws(selected_case_laws_text):
     try:
-        selected_case_laws = []
+        from collections import defaultdict
+
+        # Use a dictionary to aggregate analysis_reasoning_ids for each doc_id
+        selected_case_laws_dict = defaultdict(list)
+
+        # Find all case_law blocks
         case_blocks = re.findall(r'<case_law>(.*?)</case_law>', selected_case_laws_text, re.DOTALL)
+
         for case_block in case_blocks:
+            # Extract doc_id
             doc_id_match = re.search(r'<doc_id>(\d+)</doc_id>', case_block)
             if not doc_id_match:
                 continue
             doc_id = int(doc_id_match.group(1))
+
+            # Extract all analysis_id within the case_block
             analysis_ids = re.findall(r'<analysis_id>(\d+)</analysis_id>', case_block)
             analysis_ids = [int(aid) for aid in analysis_ids]
-            selected_case_laws.append({'doc_id': doc_id, 'analysis_reasoning_ids': analysis_ids})
+
+            # Aggregate analysis_ids for the doc_id
+            selected_case_laws_dict[doc_id].extend(analysis_ids)
+
+        # Convert the aggregated dictionary into the desired list format
+        selected_case_laws = []
+        for doc_id, analysis_ids in selected_case_laws_dict.items():
+            # Remove duplicates if necessary
+            unique_analysis_ids = list(set(analysis_ids))
+            selected_case_laws.append({
+                'doc_id': doc_id,
+                'analysis_reasoning_ids': unique_analysis_ids
+            })
+
         return selected_case_laws
+
     except Exception as e:
         print(f"Error parsing selected case laws: {str(e)}")
         raise
+
 
 
 def get_all_analysis_reasoning_ids_for_document(tx, document_id):
@@ -1187,8 +1477,9 @@ def call_claude_api(messages):
 
 
 
-def get_case_summary(tx, document_id):
+def get_case_summary(tx, document_id, analysis_reasoning_ids):
     try:
+        # Fetch the main case summary components
         query = """
         MATCH (d:Document)
         WHERE id(d) = $document_id
@@ -1198,11 +1489,40 @@ def get_case_summary(tx, document_id):
         OPTIONAL MATCH (d)<-[:SUMMARIZES]-(ar:Analysis_reasoning)
         OPTIONAL MATCH (d)<-[:SUMMARIZES]-(do:Decision_order)
         OPTIONAL MATCH (d)<-[:SUMMARIZES]-(dco:Dissenting_concurring_opinions)
+
+        // Fetch referred cases via SUMMARY_CITES relationships
+        OPTIONAL MATCH (ar)-[:SUMMARY_CITES]->(cited_doc:Document)
+        WHERE id(ar) IN $analysis_reasoning_ids OR $analysis_reasoning_ids IS NULL OR SIZE($analysis_reasoning_ids) = 0
+        WITH d, bf, do, li, arg, ar, dco, cited_doc
+
+        // Collect data
         WITH d, bf, do,
-            COLLECT(DISTINCT {text: li.final_text, index: coalesce(li.index, 0)}) AS legal_issues,
-            COLLECT(DISTINCT {text: arg.final_text, index: coalesce(arg.index, 0)}) AS arguments,
-            COLLECT(DISTINCT {text: ar.final_text, index: coalesce(ar.index, 0), id: id(ar)}) AS analysis_reasoning,
-            COLLECT(DISTINCT {text: dco.final_text, index: coalesce(dco.index, 0)}) AS dissenting_concurring
+            COLLECT(DISTINCT li) AS legal_issues_nodes,
+            COLLECT(DISTINCT arg) AS arguments_nodes,
+            COLLECT(DISTINCT ar) AS analysis_reasoning_nodes,
+            COLLECT(DISTINCT dco) AS dissenting_concurring_nodes,
+            COLLECT(DISTINCT cited_doc) AS cited_documents
+
+        // Prepare data
+        WITH d, bf, do,
+            [li IN legal_issues_nodes | {text: li.final_text, index: coalesce(li.index, 0)}] AS legal_issues,
+            [arg IN arguments_nodes | {text: arg.final_text, index: coalesce(arg.index, 0)}] AS arguments,
+            [ar IN analysis_reasoning_nodes | {
+                text: ar.final_text,
+                index: coalesce(ar.index, 0),
+                id: id(ar),
+                highlight: id(ar) IN $analysis_reasoning_ids
+            }] AS analysis_reasoning,
+            [dco IN dissenting_concurring_nodes | {text: dco.final_text, index: coalesce(dco.index, 0)}] AS dissenting_concurring,
+            cited_documents
+
+        // Prepare cases referred with document IDs
+        WITH d, bf, do, legal_issues, arguments, analysis_reasoning, dissenting_concurring,
+            [cited_doc IN cited_documents WHERE cited_doc.case_title IS NOT NULL | {
+                document_id: id(cited_doc),
+                case_title: cited_doc.case_title
+            }] AS cases_referred
+
         RETURN {
             case_title: d.case_title,
             eq_citations: coalesce(d.eq_citations, []),
@@ -1211,15 +1531,19 @@ def get_case_summary(tx, document_id):
             arguments: [arg IN arguments WHERE arg.text IS NOT NULL | arg],
             analysis_reasoning: [ar IN analysis_reasoning WHERE ar.text IS NOT NULL | ar],
             decision_order: do.final_text,
-            dissenting_concurring: [dco IN dissenting_concurring WHERE dco.text IS NOT NULL | dco]
+            dissenting_concurring: [dco IN dissenting_concurring WHERE dco.text IS NOT NULL | dco],
+            cases_referred: cases_referred
         } AS summary
         """
-        result = tx.run(query, document_id=document_id)
+        result = tx.run(query, document_id=document_id, analysis_reasoning_ids=analysis_reasoning_ids)
         record = result.single()
         return record['summary'] if record else {}
     except Exception as e:
         print(f"Error getting case summary: {str(e)}")
         raise
+
+
+
 
 
 def get_case_text(tx, document_id, analysis_reasoning_ids):
