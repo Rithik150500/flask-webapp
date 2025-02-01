@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LeXploR</title>
+    <!-- Meta tags for responsiveness -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Include Google Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet"> <!-- Modern font -->
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:400,700&display=swap" rel="stylesheet"> <!-- Professional font -->
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:400,700&display=swap" rel="stylesheet"> <!-- Legal citation font -->
+
+    <!-- Base CSS Styles -->
+    <style>
+    /* Base Styles */
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
+
+    body {
+        font-family: 'Merriweather', serif;
+        background-color: #f5f2e9; /* Muted, earthy background */
+        color: #333;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden; /* Prevent body scrolling */
+    }
+
+    /* Header */
+    #header {
+        text-align: center;
+        padding: 20px;
+        background-color: #8c8c8c; /* Muted gray */
+        color: #fff;
+    }
+
+    #header h1 {
+        font-size: 36px;
+        font-weight: bold;
+        font-family: 'Libre Baskerville', serif;
+    }
+
+    /* Input Container */
+    #input-container {
+        display: flex;
+        justify-content: center;
+        padding: 20px;
+        background-color: #ede6d5; /* Light tan */
+    }
+
+    #dispute-input {
+        width: 60%;
+        height: 150px;
+        border-radius: 10px;
+        border: 1px solid #ccc;
+        padding: 15px;
+        font-size: 16px;
+        resize: none;
+        outline: none;
+        background-color: #fff;
+        font-family: 'Roboto', sans-serif; /* Modern font */
+    }
+
+    /* Lexplore and Submit Case File Buttons */
+    #buttons-container {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        margin-top: 10px;
+    }
+
+    #lexplore-button,
+    #submit-case-file-button {
+        padding: 15px 30px;
+        font-size: 18px;
+        border-radius: 10px;
+        background-color: #8c8c8c;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        font-family: 'Merriweather', serif;
+    }
+
+    #lexplore-button:disabled,
+    #submit-case-file-button:disabled {
+        background-color: #b3b3b3;
+        cursor: not-allowed;
+    }
+
+    #lexplore-button:hover:not(:disabled),
+    #submit-case-file-button:hover:not(:disabled) {
+        background-color: #6e6e6e;
+    }
+
+    /* Feature Description */
+    #feature-description {
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 20px;
+        background-color: #ede6d5;
+        border-radius: 10px;
+        text-align: left;
+        line-height: 1.6;
+        font-family: 'Merriweather', serif;
+    }
+
+    #feature-description p {
+        font-size: 16px;
+        margin-bottom: 10px;
+    }
+
+    #feature-description em {
+        font-style: italic;
+    }
+
+    /* Main Content */
+    #main-content {
+        display: none; /* Hidden by default; shown after user clicks "LeXploR" */
+        flex-direction: column;
+        flex: 1; /* Allow it to grow and fill available space */
+        overflow: hidden; /* Hide overflow */
+    }
+
+    /* Legal Dispute Section */
+    #dispute-display {
+        width: 100%;
+        padding: 10px 20px;
+        background-color: #e0d8c3; /* Light beige */
+        border-bottom: 1px solid #ccc;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-family: 'Roboto', sans-serif;
+        position: relative;
+    }
+
+    #dispute-text {
+        flex: 1;
+        text-align: center;
+        padding: 0 20px;
+        overflow-y: auto;
+        max-height: 120px;
+        font-weight: 500;
+    }
+
+    #dispute-logo-left,
+    #dispute-logo-right {
+        width: 100px;
+        text-align: center;
+        font-family: 'Libre Baskerville', serif;
+        font-size: 24px;
+        color: #8c8c8c;
+        flex-shrink: 0;
+    }
+
+    /* Content Sections */
+    #content-sections {
+        display: flex;
+        flex: 1; /* Allow it to grow and fill remaining space */
+        overflow: hidden;
+        background-color: #f5f2e9;
+    }
+
+    /* Memo Section (Left) */
+    #memo-section {
+        flex: 0 0 35%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border-right: 1px solid #ccc;
+        background-color: #fdfbf6; /* Slightly lighter shade */
+        font-family: 'Merriweather', serif;
+    }
+
+    #memo-section .content {
+        text-align: justify; /* Align text to justify */
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        font-size: 18px;
+        line-height: 1.7;
+    }
+
+    #memo-section h3 {
+        font-size: 24px;
+        margin-bottom: 10px;
+        color: #5a5a5a;
+        font-weight: bold;
+        margin-top: 20px;
+    }
+    #memo-section h3:first-child {
+        margin-top: 0;
+    }
+
+    /* Workspace Section (Center) */
+    #workspace-section {
+        flex: 0 0 40%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        font-family: 'Roboto', sans-serif;
+    }
+
+    /* Research Section (Right) */
+    #research-section {
+        flex: 0 0 25%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border-left: 1px solid #ccc;
+        background-color: #fdfbf6;
+        font-family: 'Merriweather', serif;
+    }
+
+    /* Research Content */
+    #research-section .content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+    }
+
+    #research-section .case-title {
+        cursor: pointer;
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 18px;
+        font-family: 'Libre Baskerville', serif; /* Legal citation font */
+    }
+
+    #research-section .case-title:hover {
+        color: #000;
+    }
+
+    /* Loading Indicator in the Workspace Section */
+    .loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 1;
+        font-size: 24px;
+        color: #555;
+        font-family: 'Roboto', sans-serif;
+        padding: 10px;
+        text-align: center;
+    }
+
+    #loading-message {
+        margin: 10px;
+        font-size: 20px;
+        color: #333;
+    }
+
+    /* Chat Interface within the Workspace Section */
+    #chat-container {
+        flex: 1;
+        display: none; /* Hidden until memo is fully loaded and done event arrives */
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    #chat-window {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px;
+        background-color: #fff;
+    }
+
+    .message {
+        display: flex;
+        margin-bottom: 15px;
+        animation: fadeIn 0.3s ease-in-out;
+    }
+
+    .message.user {
+        justify-content: flex-end;
+    }
+
+    .message.assistant {
+        justify-content: flex-start; /* or center, your preference */
+        width: 100%;
+    }
+
+    .message .bubble {
+        padding: 10px 15px;
+        border-radius: 10px;
+        position: relative;
+        word-wrap: break-word;
+        white-space: pre-wrap;
+        font-family: 'Roboto', sans-serif;
+        max-width: 70%;
+    }
+
+    .message.user .bubble {
+        background-color: #8c8c8c;
+        color: #fff;
+        border-bottom-right-radius: 0;
+    }
+
+    .message.assistant .bubble {
+    background-color: #e0d8c3;
+    color: #000;
+    border-bottom-left-radius: 0;
+    margin-left: 0;
+    margin-right: 0;
+
+    /* Let it occupy the entire horizontal space */
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box; /* so padding is included in the width calculation */
+    padding: 15px;
+}
+
+    /* Chat Input */
+    #chat-input {
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        background-color: #ede6d5;
+        border-top: 1px solid #ccc;
+        flex-shrink: 0;
+    }
+
+    #chat-input textarea {
+        flex-grow: 1;
+        resize: none;
+        border: 1px solid #ccc;
+        padding: 10px;
+        border-radius: 10px;
+        background-color: #fff;
+        font-size: 16px;
+        outline: none;
+        max-height: 150px;
+        font-family: 'Roboto', sans-serif;
+    }
+
+    #chat-input button {
+        margin-left: 10px;
+        padding: 10px 20px;
+        background-color: #8c8c8c;
+        border: none;
+        border-radius: 10px;
+        color: #fff;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        font-family: 'Merriweather', serif;
+    }
+
+    #chat-input button:disabled {
+        background-color: #b3b3b3;
+        cursor: not-allowed;
+    }
+
+    #chat-input button:hover:not(:disabled) {
+        background-color: #6e6e6e;
+    }
+
+    /* Popup Styles */
+    #case-popup {
+        display: none; /* Hidden initially */
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    #case-popup .popup-content {
+        background: #fff;
+        width: 80%;
+        height: 80%;
+        display: flex;
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    #case-popup #popup-left,
+    #case-popup #popup-right {
+        width: 50%;
+        padding: 20px;
+        overflow-y: auto;
+        font-family: 'Merriweather', serif;
+    }
+
+    #case-popup #popup-left {
+        border-right: 1px solid #ccc;
+    }
+
+    #close-popup {
+        position: absolute;
+        top: 10px;
+        right: 20px;
+        font-size: 30px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #aaa;
+        transition: color 0.3s;
+    }
+
+    #close-popup:hover {
+        color: #000;
+    }
+
+    .highlighted {
+        background-color: yellow;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #ccc;
+        border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: #aaa;
+    }
+
+    /* Underline case titles on hover */
+    .case-link {
+        text-decoration: underline;
+        color: inherit;
+        cursor: pointer;
+    }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <div id="header">
+        <h1>LeXploR</h1>
+    </div>
+
+    <!-- Input Container -->
+    <div id="input-container">
+        <textarea id="dispute-input" placeholder="Enter a legal problem"></textarea>
+    </div>
+
+    <!-- Buttons Container -->
+    <div id="buttons-container">
+        <button id="lexplore-button" disabled>LeXploR</button>
+        <button id="submit-case-file-button" disabled>Submit Case File</button>
+    </div>
+
+    <!-- Feature Description Section -->
+    <div id="feature-description">
+        <p><strong>Enter Your Legal Problem Above:</strong> Provide a summary of your case or factual scenario in the text box.</p>
+        <p><strong>Click "LeXploR":</strong> Initiate an AI-powered analysis tailored to your legal problem.</p>
+        <p><strong>Receive a Detailed Memo:</strong> Get a professionally structured legal memo with relevant laws and precedents.</p>
+        <p><strong>Engage with Our AI Assistant:</strong> Dive deeper by chatting with our AI for clarifications and further insights.</p>
+        <p><strong>Explore Relevant Cases:</strong> Access summaries and full texts of pertinent cases, with key sections highlighted.</p>
+        <p><em>Experience a smarter way to conduct legal research. Start by entering your legal problem above!</em></p>
+    </div>
+
+    <!-- Main Content (hidden initially) -->
+    <div id="main-content">
+        <!-- Legal Dispute Display -->
+        <div id="dispute-display">
+            <div id="dispute-logo-left">LeXploR</div>
+            <div id="dispute-text"></div>
+            <div id="dispute-logo-right">LeXploR</div>
+        </div>
+
+        <!-- Content Sections (three columns) -->
+        <div id="content-sections">
+            <!-- Memo Section (Left) -->
+            <div id="memo-section">
+                <div class="content" id="memo-content">
+                    <!-- Dynamic insertion of memo sections (issues, discussion, conclusion) here -->
+                </div>
+            </div>
+
+            <!-- Workspace Section (Center) -->
+            <div id="workspace-section">
+                <!-- Loading Indicator (initially used while SSE is streaming) -->
+                <div class="loading" id="loading-indicator">
+                    <span id="loading-message">Setting up Workspace...</span>
+                </div>
+
+                <!-- Chat Container (hidden initially, displayed after SSE 'done') -->
+                <div id="chat-container">
+                    <div id="chat-window">
+                        <!-- Chat messages are appended here -->
+                    </div>
+                    <div id="chat-input">
+                        <textarea id="chat-message" rows="1" placeholder="Enter your query..."></textarea>
+                        <button id="chat-send-button" disabled>Send</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Research Section (Right) -->
+            <div id="research-section">
+                <div class="content" id="research-content">
+                    <!-- Dynamically show relevant case titles & their hover-based relevance here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Case Popup -->
+    <div id="case-popup">
+        <div class="popup-content">
+            <div id="popup-left">
+                <div id="case-summary"></div>
+            </div>
+            <div id="popup-right">
+                <div id="case-text"></div>
+            </div>
+            <button id="close-popup">&times;</button>
+        </div>
+    </div>
+
+
+    <!-- Main Script -->
+    <script>
+
+    function replaceCaseReferencesWithIcons(text) {
+    // Regex to find <<doc_id; case_title; discussion_id>>
+        const refRegex = /<<\s*(\d+)\s*;\s*([^;]+)\s*;\s*(\d+)\s*>>/g;
+
+        return text.replace(refRegex, (match, docId, caseTitle, discussionId) => {
+            // We'll show the case title in bold & underlined, clickable via a span
+            const trimmedTitle = caseTitle.trim();
+            return `
+            <span class="case-citation-link"
+                    data-docid="${docId}"
+                    data-discussionid="${discussionId}"
+                    style="font-weight: bold; text-decoration: underline; cursor: pointer;">
+                ${trimmedTitle}
+            </span>
+            `;
+        });
+    }
+
+
+    function attachCitationIconHandlers(container) {
+        // container is the DOM element (e.g., the memo section or chat bubble) 
+        // that now contains the replaced references
+        const icons = container.querySelectorAll(".case-citation-icon");
+        icons.forEach(icon => {
+            icon.addEventListener("click", (e) => {
+            const docId = parseInt(icon.getAttribute("data-docid"));
+            const discussionId = parseInt(icon.getAttribute("data-discussionid"));
+            // Open the popup
+            openCaseDetailsPopup(docId, [discussionId]);
+            });
+        });
+    }
+
+
+    // --------------- Global State ---------------
+
+    let finalMemo = "";                // Will store the final_memo text from SSE
+    let conversation = [];             // Will store the conversation array from SSE
+    let relevantCases = {"case": []};  // Will store the relevant cases from SSE
+    let docTitles = [];                // doc_titles array from SSE
+    let docTitlesInterval = null;      // interval handle for showing doc_titles in loading state
+
+    let partialFinalMemoBuffer = "";   // buffer for partial_final_memo SSE
+    let discoveredIssuesInvolved = false;
+    let discoveredDiscussionReasoning = false;
+    let discoveredFindingsConclusion = false;
+
+    // For Chat streaming partial response
+    let partialChatBuffer = "";
+    let currentChatMessageDiv = null;
+    let chatThinkingMode = false; // whether we are currently reading <thinking>... text
+
+    // --------------- Utility / DOM Access ---------------
+
+    const disputeInput = document.getElementById("dispute-input");
+    const lexploreButton = document.getElementById("lexplore-button");
+    const submitCaseFileButton = document.getElementById("submit-case-file-button");
+
+    const mainContent = document.getElementById("main-content");
+    const disputeTextDiv = document.getElementById("dispute-text");
+    const memoContentDiv = document.getElementById("memo-content");
+    const researchContentDiv = document.getElementById("research-content");
+
+    const loadingIndicator = document.getElementById("loading-indicator");
+    const loadingMessage = document.getElementById("loading-message");
+
+    const chatContainer = document.getElementById("chat-container");
+    const chatWindow = document.getElementById("chat-window");
+    const chatMessageInput = document.getElementById("chat-message");
+    const chatSendButton = document.getElementById("chat-send-button");
+
+    const casePopup = document.getElementById("case-popup");
+    const caseSummaryDiv = document.getElementById("case-summary");
+    const caseTextDiv = document.getElementById("case-text");
+    const closePopupBtn = document.getElementById("close-popup");
+
+    // Enable/disable the "LeXploR" and "Submit Case File" buttons depending on input
+    disputeInput.addEventListener("input", () => {
+        const trimmed = disputeInput.value.trim();
+        if(trimmed.length > 0) {
+            lexploreButton.disabled = false;
+            submitCaseFileButton.disabled = false;
+        } else {
+            lexploreButton.disabled = true;
+            submitCaseFileButton.disabled = true;
+        }
+    });
+
+    // --------------- Show/Hide Elements ---------------
+
+    function showMainContent() {
+        // Hide input area & feature description
+        document.getElementById("input-container").style.display = "none";
+        document.getElementById("buttons-container").style.display = "none";
+        document.getElementById("feature-description").style.display = "none";
+        document.getElementById("header").style.display = "none";
+
+        // Show main content 
+        mainContent.style.display = "flex";
+    }
+
+    // --------------- Step 1: Start the Dispute SSE ---------------
+
+    lexploreButton.addEventListener("click", () => {
+        const disputeText = disputeInput.value.trim();
+        if(!disputeText) return;
+        showMainContent();
+        disputeTextDiv.textContent = disputeText;
+
+        // Start SSE
+        startProcessDisputeSSE(disputeText);
+    });
+
+    function startProcessDisputeSSE(disputeText) {
+        // We'll do a POST to /process_dispute_sse with fetch, then open an SSE.
+        // Actually, for SSE, we typically do a GET. But the code suggests we do a POST then an SSE response.
+        // We'll do it via fetch? The code in the backend is `@app.route('/process_dispute_sse', methods=['POST'])`, 
+        // which *returns* SSE with mimetype='text/event-stream'.
+        // We'll use the standard EventSource pattern, but that requires GET. 
+        // Alternatively, we can do the fetch with "text/event-stream"? 
+        // There's a known workaround: we must create an `EventSource` by passing the URL with the data in JSON or query params.
+        
+        // We'll do an XHR-based SSE polyfill approach or we can do the "fetch + ReadableStream" approach. 
+        // For simplicity, let's do the standard JS EventSource approach if your server allows GET with the data in query params:
+        
+        // We'll gather the data in JSON, call fetch with method: 'POST', then read the body as SSE?
+        // The simplest approach is to do:
+        //   const es = new EventSource('/process_dispute_sse?dispute=...')
+        // But that only sends GET parameters, not JSON. 
+        // If your backend is coded to read request.get_json(), that might not work with GET.
+        //
+        // Another approach: We'll do a separate endpoint or we can send the data as a query param. Let's do it quickly:
+        
+        // let es = new EventSource(`/process_dispute_sse?dispute=${encodeURIComponent(disputeText)}`);
+        // But your backend code uses `request.get_json()` (like `data = request.get_json()`).
+        // We must either adapt the backend or do a "fetch" with {eventSource} logic.
+        //
+        // We'll do a quick approach: We'll create a small function that calls fetch with "text/event-stream" reading. 
+        // We'll manually parse the SSE. 
+        // This is possible using "ReadableStream", "Response.body" in modern browsers.
+        
+        const data = { dispute: disputeText };
+        const url = "/process_dispute_sse";
+
+        // We'll use a custom SSE approach with fetch + ReadableStream
+        fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
+        })
+        .then((response) => {
+            if(!response.ok) {
+                throw new Error("Failed to start SSE");
+            }
+            const reader = response.body.getReader();
+            
+            function processStream() {
+                return reader.read().then(({done, value}) => {
+                    if(done) {
+                        // SSE complete
+                        return;
+                    }
+                    // Convert chunk to text
+                    let chunkText = new TextDecoder().decode(value);
+                    // We parse SSE lines
+                    parseSSE(chunkText);
+                    return processStream();
+                });
+            }
+            return processStream();
+        })
+        .catch((err) => {
+            console.error("SSE error", err);
+            loadingMessage.textContent = "Error occurred. Please try again.";
+        });
+    }
+
+    // --------------- SSE Parsing for /process_dispute_sse ---------------
+
+    let docTitlesLoopRunning = false;
+
+    function parseSSE(sseChunk) {
+        // SSE events come like:
+        // event: eventName
+        // data: something
+        // data: something
+        // 
+        // Or empty lines
+        const lines = sseChunk.split("\n");
+        let eventName = null;
+        let dataBuffer = "";
+
+        for(let i=0; i<lines.length; i++){
+            let line = lines[i].trimEnd();
+
+            if(line.startsWith("event:")) {
+                // new event name
+                eventName = line.replace("event:", "").trim();
+            } else if(line.startsWith("data:")) {
+                // part of data
+                let d = line.replace("data:", "").trim();
+                dataBuffer += d + "\n";
+            } else if(line === "") {
+                // blank line => event separator
+                if(eventName && dataBuffer) {
+                    handleSSEEvent(eventName, dataBuffer.trim());
+                }
+                // reset
+                eventName = null;
+                dataBuffer = "";
+            }
+        }
+    }
+
+    function handleSSEEvent(eventName, data) {
+        switch(eventName) {
+            case "partial_memo":
+                // This is a chunk of the initial memo. We do not append them, 
+                // but replace the existing chunk text in the loading indicator.
+                // "just display the single chunk one by one"
+                loadingMessage.textContent = data; 
+                break;
+
+            case "doc_titles":
+                // data is JSON array of doc titles
+                try {
+                    docTitles = JSON.parse(data);
+                } catch(e) {
+                    docTitles = [];
+                }
+                // Now we show them in a 1-second loop. We stop once we get relevant_cases
+                if(docTitles.length > 0) {
+                    startDocTitlesLoop();
+                }
+                break;
+
+            case "relevant_cases":
+                // data is JSON
+                stopDocTitlesLoop();
+                loadingMessage.textContent = ""; 
+                relevantCases = JSON.parse(data);
+                // Populate the research section
+                populateResearchSection(relevantCases);
+                // Stop the loading indicator
+                loadingIndicator.style.display = "none";
+                break;
+
+            case "partial_final_memo":
+                // We are receiving chunks for the final memo. We parse them in real time for each memo section
+                partialFinalMemoBuffer += JSON.parse(data); // data is quoted string chunk
+                parseMemoSectionsFromBuffer();
+                break;
+
+            case "final_memo":
+                // Store final memo for chat usage
+                finalMemo = data;
+                break;
+
+            case "conversation":
+                // We get an empty or initial conversation array. Store it
+                conversation = JSON.parse(data);
+                break;
+
+            case "done":
+                // SSE is finished, we can now show chat
+                loadingIndicator.style.display = "none";
+                chatContainer.style.display = "flex";
+                chatSendButton.disabled = false;
+                break;
+
+            case "error":
+                loadingMessage.textContent = data;
+                console.error("SSE error event:", data);
+                break;
+
+            default:
+                console.warn("Unhandled SSE event:", eventName, data);
+                break;
+        }
+    }
+
+    // --------------- doc_titles loop (loading indicator) ---------------
+    function startDocTitlesLoop() {
+        docTitlesLoopRunning = true;
+        let index = 0;
+        docTitlesInterval = setInterval(() => {
+            if(!docTitlesLoopRunning) return; // safety
+            loadingMessage.textContent = docTitles[index];
+            index = (index + 1) % docTitles.length;
+        }, 1000);
+    }
+    function stopDocTitlesLoop() {
+        docTitlesLoopRunning = false;
+        if(docTitlesInterval) clearInterval(docTitlesInterval);
+        docTitlesInterval = null;
+    }
+
+    // --------------- Populate the Research Section ---------------
+    function populateResearchSection(relevantCasesObj) {
+        // relevantCasesObj = {
+        //   "case": [ { doc_id, case_title, discussion_id, relevance }, ... ]
+        // }
+        researchContentDiv.innerHTML = "";
+        const cases = relevantCasesObj.case || [];
+        cases.forEach((c) => {
+            const cdiv = document.createElement("div");
+            cdiv.classList.add("case-title");
+            cdiv.textContent = c.case_title || (`Case [DocID ${c.doc_id}]`);
+            // On hover => show c.relevance in a tooltip or something
+            cdiv.title = c.relevance || "No relevance info.";
+            // On click => open popup
+            cdiv.addEventListener("click", () => {
+                // discussion_id can be int or array
+                let analysisReasoningIds = [];
+                if(Array.isArray(c.discussion_id)) {
+                    analysisReasoningIds = c.discussion_id;
+                } else if(typeof c.discussion_id === "number"){
+                    analysisReasoningIds = [c.discussion_id];
+                }
+                openCaseDetailsPopup(c.doc_id, analysisReasoningIds);
+            });
+            researchContentDiv.appendChild(cdiv);
+        });
+    }
+
+    // --------------- Parse Partial Final Memo for 3 sections ---------------
+    function parseMemoSectionsFromBuffer() {
+        // We look for <issues_involved>...</issues_involved>
+        // <discussion_reasoning>...</discussion_reasoning>
+        // <findings_conclusion>...</findings_conclusion>
+        // Because chunks can arrive incomplete, we do an iterative approach.
+        
+        // 1) issues_involved
+        if(!discoveredIssuesInvolved) {
+            const matched = extractSection(partialFinalMemoBuffer, "issues_involved");
+            if(matched) {
+                discoveredIssuesInvolved = true;
+                // We have the entire <issues_involved> content
+                const content = matched.content;
+                // Remove that portion from buffer
+                partialFinalMemoBuffer = matched.remaining;
+                // Display it
+                let sectionHtml = `<h3>Issues Involved</h3><div>${escapeHTML(content)}</div>`;
+                memoContentDiv.insertAdjacentHTML("beforeend", sectionHtml);
+            }
+        }
+
+        // 2) discussion_reasoning
+        if (!discoveredDiscussionReasoning) {
+            const matched = extractSection(partialFinalMemoBuffer, "discussion_reasoning");
+            if (matched) {
+                discoveredDiscussionReasoning = true;
+                let content = matched.content;
+                partialFinalMemoBuffer = matched.remaining;
+                
+                // *** ADD: Replace references in the discussion reasoning section ***
+                content = replaceCaseReferencesWithIcons(content);
+
+                // Now insert that content into the memo
+                const sectionHtml = `
+                <h3>Discussion/Reasoning</h3>
+                <div class="discussion-reasoning-content">${content}</div>
+                `;
+                memoContentDiv.insertAdjacentHTML("beforeend", sectionHtml);
+
+                // *** ADD: attach handlers to new icons ***
+                const newlyInserted = memoContentDiv.querySelector(".discussion-reasoning-content");
+                attachCitationIconHandlers(newlyInserted);
+            }
+        }
+
+
+        // 3) findings_conclusion
+        if(!discoveredFindingsConclusion) {
+            const matched = extractSection(partialFinalMemoBuffer, "findings_conclusion");
+            if(matched) {
+                discoveredFindingsConclusion = true;
+                const content = matched.content;
+                partialFinalMemoBuffer = matched.remaining;
+                let sectionHtml = `<h3>Findings/Conclusion</h3><div>${escapeHTML(content)}</div>`;
+                memoContentDiv.insertAdjacentHTML("beforeend", sectionHtml);
+            }
+        }
+    }
+
+    // Extract a section like <tagName> ... </tagName> from the buffer
+    // Returns {content, remaining} or null
+    function extractSection(buffer, tagName) {
+        const startTag = `<${tagName}>`;
+        const endTag = `</${tagName}>`;
+        const startIndex = buffer.indexOf(startTag);
+        const endIndex = buffer.indexOf(endTag);
+
+        if(startIndex >= 0 && endIndex > startIndex) {
+            const innerStart = startIndex + startTag.length;
+            const content = buffer.substring(innerStart, endIndex);
+            const remaining = buffer.substring(endIndex + endTag.length);
+            return {content, remaining};
+        }
+        return null;
+    }
+
+    function escapeHTML(str) {
+        // Basic HTML escaping
+        return str
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+    }
+
+    // --------------- Case Details Popup ---------------
+    function openCaseDetailsPopup(documentId, analysisReasoningIds) {
+        const data = {
+            document_id: documentId,
+            analysis_reasoning_ids: analysisReasoningIds
+        };
+        fetch("/get_case_details", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(json => {
+            if(json.error) {
+                alert("Error: " + json.error);
+                return;
+            }
+            const { case_summary, case_text } = json;
+            // Display summary on the left
+            renderCaseSummary(case_summary);
+            // Display text on the right
+            caseTextDiv.innerHTML = case_text || "";
+
+            // Highlight spans that have a data-summary-cites attribute
+            const highlightSpans = caseTextDiv.querySelectorAll('span[data-summary-cites]');
+            highlightSpans.forEach((span) => {
+                span.classList.add('highlighted');
+            });
+            // Show popup
+            casePopup.style.display = "flex";
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Failed to get case details");
+        });
+    }
+
+    function renderCaseSummary(summary) {
+        // summary has structure: { case_title, eq_citations, background_facts, ... , cases_referred: [...] }
+        // highlight the analysis_reasoning that are marked "highlight: true" if present
+        let html = "";
+        if(summary.case_title) {
+            html += `<h3>${summary.case_title}</h3>`;
+        }
+        if(summary.background_facts) {
+            html += `<h4>Background Facts</h4><p>${summary.background_facts}</p>`;
+        }
+        if(Array.isArray(summary.legal_issues) && summary.legal_issues.length > 0) {
+            html += `<h4>Legal Issues</h4>`;
+            summary.legal_issues.forEach((li) => {
+                html += `<p>${li.text}</p>`;
+            });
+        }
+        if(Array.isArray(summary.arguments) && summary.arguments.length > 0) {
+            html += `<h4>Arguments</h4>`;
+            summary.arguments.forEach((arg) => {
+                html += `<p>${arg.text}</p>`;
+            });
+        }
+        if(Array.isArray(summary.analysis_reasoning) && summary.analysis_reasoning.length > 0) {
+            html += `<h4>Analysis / Reasoning</h4>`;
+            summary.analysis_reasoning.forEach((ar) => {
+                // highlight is server-marked if that was in analysis_reasoning_ids
+                const isHighlighted = ar.highlight;
+                const style = isHighlighted ? 'style="background-color:yellow;"' : '';
+                html += `<p ${style}>${ar.text}</p>`;
+            });
+        }
+        if(summary.decision_order) {
+            html += `<h4>Decision / Order</h4><p>${summary.decision_order}</p>`;
+        }
+        if(Array.isArray(summary.dissenting_concurring) && summary.dissenting_concurring.length > 0) {
+            html += `<h4>Dissenting / Concurring</h4>`;
+            summary.dissenting_concurring.forEach((dco) => {
+                html += `<p>${dco.text}</p>`;
+            });
+        }
+        if(Array.isArray(summary.cases_referred) && summary.cases_referred.length > 0) {
+            html += `<h4>Cases Referred</h4>`;
+            summary.cases_referred.forEach((c) => {
+                // each c => {document_id, case_title}
+                // click => open that doc. This time no analysisReasoningIds
+                html += `<p class="case-link" data-docid="${c.document_id}">
+                            ${c.case_title || 'Unknown Title'}
+                         </p>`;
+            });
+        }
+        caseSummaryDiv.innerHTML = html;
+
+        // Attach event listener to referred cases
+        const referredLinks = caseSummaryDiv.querySelectorAll(".case-link");
+        referredLinks.forEach(link => {
+            link.addEventListener("click", (e) => {
+                const docid = e.target.getAttribute("data-docid");
+                // open case details with no analysis reasoning
+                openCaseDetailsPopup(parseInt(docid), []);
+            });
+        });
+    }
+
+    closePopupBtn.addEventListener("click", () => {
+        casePopup.style.display = "none";
+    });
+
+    // --------------- Chat Functionality ---------------
+    chatSendButton.addEventListener("click", sendChatMessage);
+
+    function sendChatMessage() {
+        const userTask = chatMessageInput.value.trim();
+        if(!userTask) return;
+        // disable send
+        chatSendButton.disabled = true;
+
+        // Add user message to chat window
+        appendUserMessage(userTask);
+
+        // SSE to /chat
+        startChatSSE(userTask);
+        chatMessageInput.value = "";
+    }
+
+    function startChatSSE(userTask) {
+        const data = {
+            conversation: conversation,
+            relevant_cases: relevantCases,
+            user_task: userTask,
+            dispute: disputeInput.value.trim(),
+            final_memo: finalMemo
+        };
+
+        fetch("/chat", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if(!response.ok) {
+                throw new Error("Chat SSE request failed");
+            }
+            const reader = response.body.getReader();
+
+            function processStream() {
+                return reader.read().then(({done, value}) => {
+                    if(done) {
+                        return;
+                    }
+                    let chunkText = new TextDecoder().decode(value);
+                    parseChatSSE(chunkText);
+                    return processStream();
+                });
+            }
+            return processStream();
+        })
+        .catch(err => {
+            console.error("Chat SSE error", err);
+            appendAssistantMessage("Error occurred during chat. Please try again.");
+            chatSendButton.disabled = false;
+        });
+    }
+
+    function parseChatSSE(chunk) {
+        const lines = chunk.split("\n");
+        let eventName = null;
+        let dataBuffer = "";
+
+        for(let i=0; i<lines.length; i++){
+            let line = lines[i].trimEnd();
+            if(line.startsWith("event:")) {
+                eventName = line.replace("event:", "").trim();
+            } else if(line.startsWith("data:")) {
+                let d = line.replace("data:", "").trim();
+                dataBuffer += d + "\n";
+            } else if(line === "") {
+                if(eventName && dataBuffer) {
+                    handleChatSSEEvent(eventName, dataBuffer.trim());
+                }
+                eventName = null;
+                dataBuffer = "";
+            }
+        }
+    }
+
+    function handleChatSSEEvent(eventName, data) {
+        switch(eventName) {
+            case "partial_chat_response":
+                // We get streaming chunks that may contain <thinking> and <output> tags
+                const chunkText = JSON.parse(data); // data is quoted string from server
+                handlePartialChatResponse(chunkText.text);
+                break;
+
+            case "relevant_cases":
+                // update relevant cases
+                relevantCases = JSON.parse(data);
+                // re-populate research section
+                populateResearchSection(relevantCases);
+                break;
+
+            case "conversation":
+                // update conversation
+                conversation = JSON.parse(data);
+                break;
+
+            case "done":
+                // enable chat button again
+                chatSendButton.disabled = false;
+                break;
+
+            case "error":
+                appendAssistantMessage("Chat SSE error: " + data);
+                chatSendButton.disabled = false;
+                break;
+
+            default:
+                console.warn("Unhandled chat SSE event:", eventName, data);
+                break;
+        }
+    }
+
+    // The approach is:
+    //   1. We accumulate chunkText into partialChatBuffer
+    //   2. We look for <thinking>...</thinking> or <output>...</output>.
+    //   3. The streaming initially goes into <thinking>.
+    //   4. Once we see <thinking>, we display that in a "live" chat bubble.
+    //   5. Once <thinking> is closed, we keep reading but do not finalize until <output> is found.
+    //   6. When <output> is found, we replace the text in the chat bubble with the final output portion.
+    let assistantBuffer = "";
+
+    function handlePartialChatResponse(chunkText) {
+        // Accumulate incoming chunk into the buffer
+        partialChatBuffer += chunkText;
+        console.log(partialChatBuffer)
+
+        // 1) Check for <thinking> start
+        const startThinking = partialChatBuffer.indexOf("<thinking>");
+        if (startThinking !== -1) {
+            // We found <thinking>, so "thinking" is ON
+            const endThinking = partialChatBuffer.indexOf("</thinking>");
+
+            // If there's no closing </thinking>, show all text from after <thinking> to end
+            if (endThinking === -1) {
+            const content = partialChatBuffer.substring(startThinking + "<thinking>".length);
+
+            // If we don't yet have a bubble for the assistant, create one
+            if (!currentChatMessageDiv) {
+                currentChatMessageDiv = appendAssistantMessage(content);
+            } else {
+                // Otherwise update the existing bubble
+                currentChatMessageDiv.querySelector(".bubble").textContent = content;
+            }
+
+            // No removal from buffer here, waiting for the closing </thinking>
+            return;
+            } 
+            else {
+            // We have the complete <thinking>...</thinking>
+            const content = partialChatBuffer.substring(
+                startThinking + "<thinking>".length,
+                endThinking
+            );
+
+            // Display the full thinking text
+            if (!currentChatMessageDiv) {
+                currentChatMessageDiv = appendAssistantMessage(content);
+            } else {
+                currentChatMessageDiv.querySelector(".bubble").textContent = content;
+            }
+
+            // Remove the entire <thinking>...</thinking> segment from the buffer
+            partialChatBuffer = partialChatBuffer.substring(endThinking + "</thinking>".length);
+            }
+        }
+
+        // 2) Look for <output> ... </output>
+        const startOutput = partialChatBuffer.indexOf("<output>");
+        const endOutput = partialChatBuffer.indexOf("</output>");
+
+        // If both tags exist, we have a complete <output> block
+        if (startOutput !== -1 && endOutput !== -1 && endOutput > startOutput) {
+            // Extract final output text
+            // Once the <output> block is found...
+            const rawOutput = partialChatBuffer.substring(startOutput + "<output>".length, endOutput);
+
+            // 1) Replace references with icons
+            const transformedOutput = replaceCaseReferencesWithIcons(rawOutput);
+
+            // 2) Insert it into the chat bubble
+            if (!currentChatMessageDiv) {
+            currentChatMessageDiv = appendAssistantMessage(""); 
+            }
+            // Use .innerHTML so the <span> icons are rendered as HTML
+            currentChatMessageDiv.querySelector(".bubble").innerHTML = transformedOutput;
+
+            // 3) Attach click handlers for newly inserted icons
+            attachCitationIconHandlers(currentChatMessageDiv.querySelector(".bubble"));
+
+            // Finally remove that block from the buffer
+            partialChatBuffer = partialChatBuffer.substring(endOutput + "</output>".length);
+
+        }
+    }
+
+
+
+    // --------------- Chat Window: Append Messages ---------------
+    function appendUserMessage(text) {
+        const msgDiv = document.createElement("div");
+        msgDiv.classList.add("message", "user");
+        const bubble = document.createElement("div");
+        bubble.classList.add("bubble");
+        bubble.textContent = text;
+        msgDiv.appendChild(bubble);
+        chatWindow.appendChild(msgDiv);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+    function appendAssistantMessage(text) {
+        const msgDiv = document.createElement("div");
+        msgDiv.classList.add("message", "assistant");
+
+        const bubble = document.createElement("div");
+        bubble.classList.add("bubble");
+
+        // Use innerHTML instead of textContent
+        bubble.innerHTML = text;      // <-- set HTML
+
+        msgDiv.appendChild(bubble);
+        chatWindow.appendChild(msgDiv);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+        return msgDiv; // so we can update it later
+    }
+
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Landmark Judgments</title>
+  <style>
+    /* Basic styling just for demonstration */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      padding: 0;
+    }
+    .form-container, .table-container {
+      margin-bottom: 20px;
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+      border-collapse: collapse;
+      padding: 8px;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    .popup-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+      display: none; /* hidden by default */
+      justify-content: center;
+      align-items: center;
+    }
+    .popup-content {
+      background: #fff;
+      padding: 20px;
+      max-width: 600px;
+      border-radius: 4px;
+      position: relative;
+    }
+    .popup-content h2 {
+      margin-top: 0;
+    }
+    .close-popup {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      cursor: pointer;
+      color: red;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Landmark Judgments</h1>
+  
+  <!-- Form to select month & year -->
+  <div class="form-container">
+    <label for="month">Select Month:</label>
+    <select id="month">
+      <option value="">--Select--</option>
+      <option value="1">January</option>
+      <option value="2">February</option>
+      <option value="3">March</option>
+      <option value="4">April</option>
+      <option value="5">May</option>
+      <option value="6">June</option>
+      <option value="7">July</option>
+      <option value="8">August</option>
+      <option value="9">September</option>
+      <option value="10">October</option>
+      <option value="11">November</option>
+      <option value="12">December</option>
+    </select>
+
+    <label for="year">Select Year:</label>
+    <select id="year">
+      <option value="">--Select--</option>
+      <option value="2021">2021</option>
+      <option value="2022">2022</option>
+      <option value="2023">2023</option>
+      <option value="2024">2024</option>
+      <!-- Add more years as needed -->
+    </select>
+
+    <button id="submitBtn">Submit</button>
+  </div>
+
+  <div class="table-container">
+    <table id="judgmentTable" style="display: none;">
+      <thead>
+        <tr>
+          <th>Judgement (Case Name / Statute)</th>
+          <th>Reason for Landmark Status</th>
+          <th>Headnote/Lawpoint (Mini Summary)</th>
+          <th>Detailed Summary (Popup)</th>
+        </tr>
+      </thead>
+      <tbody id="judgmentTableBody">
+        <!-- Rows inserted dynamically -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Popup for Detailed Organized Summary -->
+  <div class="popup-overlay" id="popupOverlay">
+    <div class="popup-content" id="popupContent">
+      <span class="close-popup" id="closePopup">X</span>
+      <h2>Detailed Organized Summary</h2>
+      <div id="popupSummary"></div>
+    </div>
+  </div>
+
+  <script>
+    const submitBtn = document.getElementById('submitBtn');
+    const monthSelect = document.getElementById('month');
+    const yearSelect = document.getElementById('year');
+    const judgmentTable = document.getElementById('judgmentTable');
+    const judgmentTableBody = document.getElementById('judgmentTableBody');
+
+    // Popup elements
+    const popupOverlay = document.getElementById('popupOverlay');
+    const popupContent = document.getElementById('popupContent');
+    const popupSummary = document.getElementById('popupSummary');
+    const closePopup = document.getElementById('closePopup');
+
+    closePopup.addEventListener('click', () => {
+      popupOverlay.style.display = 'none';
+    });
+
+    submitBtn.addEventListener('click', async () => {
+      const month = monthSelect.value;
+      const year = yearSelect.value;
+
+      if (!month || !year) {
+        alert("Please select both month and year.");
+        return;
+      }
+
+      // Clear table body
+      judgmentTableBody.innerHTML = "";
+      judgmentTable.style.display = "none";
+
+      // Call the backend to get judgments
+      try {
+        const response = await fetch('/get_judgements', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ month, year })
+        });
+        const data = await response.json();
+
+        if (data.error) {
+          alert(data.error);
+          return;
+        }
+
+        // data is expected to have { "landmark_cases": [ {...}, {...} ] }
+        const landmarkCases = data.landmark_cases || [];
+
+        if (landmarkCases.length > 0) {
+          judgmentTable.style.display = "table";
+        }
+
+        landmarkCases.forEach((item) => {
+          const row = document.createElement('tr');
+
+          // 1) Case Name / Statute
+          const leftCell = document.createElement('td');
+          leftCell.textContent = `${item.casename} / ${item.statute}`;
+          row.appendChild(leftCell);
+
+          // 2) Reason for Landmark
+          const reasonCell = document.createElement('td');
+          reasonCell.textContent = item.reason_for_landmark_status || '';
+          row.appendChild(reasonCell);
+
+          // 3) Headnote (mini summary) -> Button
+          const miniSummaryCell = document.createElement('td');
+          const miniButton = document.createElement('button');
+          miniButton.textContent = 'lexplor';
+          miniButton.addEventListener('click', () => {
+            getMiniSummary(item.tid);
+          });
+          miniSummaryCell.appendChild(miniButton);
+          row.appendChild(miniSummaryCell);
+
+          // 4) Detailed summary -> Button
+          const detailedCell = document.createElement('td');
+          const detailedButton = document.createElement('button');
+          detailedButton.textContent = 'lexplor';
+          detailedButton.addEventListener('click', () => {
+            getDetailedSummary(item.tid);
+          });
+          detailedCell.appendChild(detailedButton);
+          row.appendChild(detailedCell);
+
+          judgmentTableBody.appendChild(row);
+        });
+      } catch (err) {
+        console.error(err);
+        alert("Error getting judgments from backend.");
+      }
+    });
+
+    // ---------------------------------------------------------------------
+    // getMiniSummary -> calls /get_mini_summary
+    // ---------------------------------------------------------------------
+    async function getMiniSummary(tid) {
+      try {
+        const response = await fetch('/get_mini_summary', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ tid })
+        });
+        const data = await response.json();
+
+        if (data.error) {
+          alert(data.error);
+          return;
+        }
+
+        // data.summary is the short summary
+        alert("Mini Summary: " + data.summary);
+      } catch (err) {
+        console.error(err);
+        alert("Error fetching mini summary.");
+      }
+    }
+
+    // ---------------------------------------------------------------------
+    // getDetailedSummary -> calls /get_detailed_summary
+    // ---------------------------------------------------------------------
+    async function getDetailedSummary(tid) {
+      try {
+        const response = await fetch('/get_detailed_summary', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ tid })
+        });
+        const data = await response.json();
+        
+        if (data.error) {
+          alert(data.error);
+          return;
+        }
+
+        // data.summary is the detailed summary
+        popupSummary.textContent = data.summary;
+        popupOverlay.style.display = 'flex';  // Show popup
+      } catch (err) {
+        console.error(err);
+        alert("Error fetching detailed summary.");
+      }
+    }
+  </script>
+</body>
+</html>
