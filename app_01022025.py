@@ -18,6 +18,11 @@ def preprocess_markdown(md_text: str) -> str:
     # 1. Ensure blockquotes (`>`) have a newline before them
     md_text = re.sub(r'(?<!\n)>', r'\n>', md_text)
 
+    # 2. Convert ordered lists to unordered lists.
+    # This regex finds lines starting with optional whitespace, followed by one or more digits, a dot, and a space.
+    # It then replaces that part with the same indentation followed by '- '.
+    md_text = re.sub(r'^(\s*)\d+\.\s', r'\1- ', md_text, flags=re.MULTILINE)
+
     # # 2. Replace unordered lists (`-`) with paragraphs
     # md_text = re.sub(r'^\s*-\s*(.*)', r'\n<p>\1</p>', md_text, flags=re.MULTILINE)
 
