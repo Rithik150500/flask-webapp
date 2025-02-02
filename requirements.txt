@@ -90,3 +90,8 @@ websocket-client==1.8.0
 Werkzeug==3.0.4
 wsproto==1.2.0
 yarl==1.14.0
+flask==3.0.0
+google-generativeai==0.3.0
+python-dotenv==1.0.0
+markdown==3.5.1
+gunicorn==21.2.0
