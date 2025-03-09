@@ -21,9 +21,9 @@ app = Flask(__name__)
 # ========== CONFIGURATION & INITIALIZATION ==========
 
 # Load configuration from environment variables
-NEO4J_URI = 'bolt://localhost:7687'
+NEO4J_URI = 'neo4j+s://3e0a4374.databases.neo4j.io'
 NEO4J_USERNAME = 'neo4j'
-NEO4J_PASSWORD = 'sc_graph_db'
+NEO4J_PASSWORD = '9gqv6s7Ipk0duq1mpzSlbyoaQkLWK860HaPRKbXp7X4'
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
