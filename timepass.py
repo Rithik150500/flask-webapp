@@ -70,29 +70,39 @@ def process_dispute_sse():
             memo_text = initial_memo_box["text"]
 
             # ========== PARALLELIZE TASKS A & B ==========
+            case_refs = parse_initial_memo(memo_text)
+            main_doc_ids = query_full_text_index(case_refs)
+            all_docs = get_related_docs(main_doc_ids)
+                
 
-            with ThreadPoolExecutor(max_workers=2) as executor:
-                futureA = executor.submit(task_A, memo_text)
-                futureB = executor.submit(task_B, memo_text)
+            memo_embed = get_embed(memo_text)
+            some_docs = query_vector_index(memo_embed)
+            
 
-                # We'll store the results of each future
-                case_refs, main_doc_ids, all_docs = None, None, None
-                memo_embed, some_docs = None, None
+            # with ThreadPoolExecutor(max_workers=2) as executor:
+            #     futureA = executor.submit(task_A, memo_text)
+            #     futureB = executor.submit(task_B, memo_text)
 
-                # Wait for both tasks to complete
-                done_set = as_completed([futureA, futureB])
-                for fut in done_set:
-                    if fut == futureA:
-                        # Unpack the results from Task A
-                        case_refs, main_doc_ids, all_docs = fut.result()
-                    else:
-                        # Unpack the results from Task B
-                        memo_embed, some_docs = fut.result()
+            #     # We'll store the results of each future
+            #     case_refs, main_doc_ids, all_docs = None, None, None
+            #     memo_embed, some_docs = None, None
+
+            #     # Wait for both tasks to complete
+            #     done_set = as_completed([futureA, futureB])
+            #     for fut in done_set:
+            #         if fut == futureA:
+            #             # Unpack the results from Task A
+            #             case_refs, main_doc_ids, all_docs = fut.result()
+            #         else:
+            #             # Unpack the results from Task B
+            #             memo_embed, some_docs = fut.result()
 
             # 3. Next steps
             print("Case refs:", case_refs)
             print("Main doc IDs:", main_doc_ids)
             print("All Docs (with titles):", all_docs)
+            print("Some Docs (with titles):", some_docs)
+
 
             # 6. final docs intersection
             final_docs = get_final_docs_union(all_docs, some_docs)
@@ -234,26 +244,26 @@ def get_case_details():
 
 
 
-def task_A(memo_text):
-    """
-    1) parse_initial_memo(memo_text)
-    2) query_full_text_index(...)
-    3) get_related_docs(...)
-    """
-    case_refs = parse_initial_memo(memo_text)
-    main_doc_ids = query_full_text_index(case_refs)
-    all_docs = get_related_docs(main_doc_ids)
-    # some_docs_fulltext = query_summary_fulltext_index(memo_text)
-    return case_refs, main_doc_ids, all_docs
+# def task_A(memo_text):
+#     """
+#     1) parse_initial_memo(memo_text)
+#     2) query_full_text_index(...)
+#     3) get_related_docs(...)
+#     """
+#     case_refs = parse_initial_memo(memo_text)
+#     main_doc_ids = query_full_text_index(case_refs)
+#     all_docs = get_related_docs(main_doc_ids)
+#     # some_docs_fulltext = query_summary_fulltext_index(memo_text)
+#     return case_refs, main_doc_ids, all_docs
 
-def task_B(memo_text):
-    """
-    1) get_embed(memo_text)
-    2) query_vector_index(...)
-    """
-    memo_embed = get_embed(memo_text)
-    some_docs = query_vector_index(memo_embed)
-    return memo_embed, some_docs
+# def task_B(memo_text):
+#     """
+#     1) get_embed(memo_text)
+#     2) query_vector_index(...)
+#     """
+#     memo_embed = get_embed(memo_text)
+#     some_docs = query_vector_index(memo_embed)
+#     return memo_embed, some_docs
 
 
 
@@ -261,21 +271,21 @@ def task_B(memo_text):
 def stream_initial_memo(memo_box, legal_problem):
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     prompt = f"""
-You are a legal research assistant tasked with analyzing and providing insights on a given legal problem. Your goal is to conduct thorough legal research and present a comprehensive and well-reasoned legal memo that mirrors the depth and precision of professional legal analyses that can assist a legal professional in addressing the given problem. 
+You are a legal research assistant tasked with analyzing and providing insights on a given legal Proposition. Your goal is to conduct thorough legal research and present a comprehensive and well-reasoned legal memo that mirrors the depth and precision of professional legal analyses that can assist a legal professional in addressing the given Proposition. 
 
 Follow the steps below meticulously to ensure a comprehensive analysis.
 
 
-1. **Review the Legal Problem:** Carefully read and understand the provided legal problem to grasp all relevant facts and legal questions.
+1. **Review the Legal Proposition:** Carefully read and understand the provided legal Proposition to grasp all relevant facts and legal questions.
 
-<legal_problem>
+<legal_Proposition>
 {legal_problem}
-</legal_problem>
+</legal_Proposition>
 
 2. Now, follow the legal research methodology outlined below.
 
-a) **Identify the Research Problem:** 
-      - Break down the problem into specific legal questions that need to be addressed.
+a) **Identify the Research Proposition:** 
+      - Break down the Proposition into specific legal questions that need to be addressed.
 
 b) **Collect Legal Sources:** 
       - **Statutes:** Enumerate specific statutes, sections, and legal provisions relevant to each identified issue.
@@ -283,31 +293,31 @@ b) **Collect Legal Sources:**
 
 c) **Synthesize Legal Principles:** 
       - Extract key legal concepts and principles from the collected sources. Provide clear definitions and explanations for each identified principle.
-      - Explain how these principles interrelate and apply to the given problem.
+      - Explain how these principles interrelate and apply to the given Proposition.
       - For each relevant case law, provide a concise summary of the court's ruling, and the rationale behind the decision.
-      - Analyze how the principles established in each case apply to the current legal problem.
+      - Analyze how the principles established in each case apply to the current legal Proposition.
       - Highlight similarities and distinctions between the cases and the present scenario to build a robust legal argument.
       - Develop a coherent understanding of the legal issue by logically connecting the facts to the legal doctrines.
 
 
-3. Now, Identify highly relevant case laws, preferably from the Supreme Court of India, applicable to this legal problem. For each case, provide a comprehensive explanation of its relevance, focusing on key legal principles and their application to the current problem, demonstrating how it influences the interpretation or application of the law in this context.
+3. Now, Identify highly relevant case laws, preferably from the Supreme Court of India, applicable to this legal Proposition. For each case, provide a comprehensive explanation of its relevance, focusing on key legal principles and their application to the current Proposition, demonstrating how it influences the interpretation or application of the law in this context.
 
 
 Follow these instructions carefully to produce a well-structured and legally sound memo ensuring comprehensive coverage, deep analysis, and clear linkage between facts and legal principles. The memo should provide a thorough examination of each legal issue, supported by relevant statutes, case laws, and clear logical reasoning.
 
-Analyze the problem and research thoroughly. Identify the key legal issues, relevant laws, and applicable precedents. Consider how the facts of the case relate to the legal principles identified in your research.
+Analyze the Proposition and research thoroughly. Identify the key legal issues, relevant laws, and applicable precedents. Consider how the facts of the case relate to the legal principles identified in your research.
 
 Structure your memo using the following outline:
 
 1. Issues Involved
     - List each legal question clearly and succinctly.
-    - Ensure that each issue is directly derived from the facts of the legal problem.
+    - Ensure that each issue is directly derived from the facts of the legal Proposition.
 
 2. Discussion/Reasoning
 Provide a detailed legal analysis here. This should include:
-    - Clearly explain the relevant legal principles, statutes, and case law. Integrate relevant case laws, summarizing their holdings and applying their principles to the problem at hand.
+    - Clearly explain the relevant legal principles, statutes, and case law. Integrate relevant case laws, summarizing their holdings and applying their principles to the Proposition at hand.
 
-    - Carefully examine how the specific facts or questions presented in the legal problem interact with the legal principles. Demonstrate how the legal principles influence the outcome of each issue based on the provided facts. Provide hypothetical scenarios or counterexamples if necessary to highlight the strengths of your analysis. Explain your reasoning and how these principles lead to potential conclusions or answers.
+    - Carefully examine how the specific facts or questions presented in the legal Proposition interact with the legal principles. Demonstrate how the legal principles influence the outcome of each issue based on the provided facts. Provide hypothetical scenarios or counterexamples if necessary to highlight the strengths of your analysis. Explain your reasoning and how these principles lead to potential conclusions or answers.
 
     - Discuss potential arguments, counterarguments, or alternative interpretations of the law. Where applicable, analyze differing judicial opinions or interpretations related to the legal issues. Critically evaluate these perspectives, explaining why they may or may not apply to the case. Reinforce your conclusions by addressing and refuting opposing viewpoints where applicable.
 
@@ -350,13 +360,13 @@ Before finalizing your memo, review and refine your analysis to ensure it aligns
 - **Ensure Accuracy:** Confirm that all legal citations are accurate and correctly applied. Consider whether each argument is supported by relevant legal authorities.
 - **Proofread:** Correct any grammatical or typographical errors to maintain professionalism.
 
-Remember to maintain a professional and objective tone throughout your analysis. If you encounter any ambiguities in the legal problem, state your assumptions clearly. Your goal is to provide a comprehensive and well-structured memo that could assist a legal professional in addressing the given problem. Ensure that your memo is comprehensive, well-reasoned, and adheres to professional legal standards. Focus on clarity, logical argumentation, and proper use of legal authorities.
+Remember to maintain a professional and objective tone throughout your analysis. If you encounter any ambiguities in the legal Proposition, state your assumptions clearly. Your goal is to provide a comprehensive and well-structured memo that could assist a legal professional in addressing the given Proposition. Ensure that your memo is comprehensive, well-reasoned, and adheres to professional legal standards. Focus on clarity, logical argumentation, and proper use of legal authorities.
 
 """
     # Stream the output in chunks
     # Each iteration yields partial text of the response as it is generated.
     with client.messages.stream(
-        model="claude-3-5-sonnet-20241022",
+        model="claude-3-5-haiku-20241022",
         max_tokens=2048,
         temperature=0,
         messages=[{"role": "user", "content": prompt}],
@@ -384,41 +394,41 @@ def parse_initial_memo(initial_memo):
         case_refs.append((full_case_name, year))
     return case_refs
 
+def escape_lucene_special_chars(text):
+    # Define a list of Lucene special characters.
+    # Note: Order matters – process multi-character tokens like '&&' and '||' first.
+    special_chars = ['&&', '||', '+', '-', '!', '(', ')', '{', '}', '[', ']', '^', '"', '~', '*', '?', ':', '\\', '/']
+    for char in special_chars:
+        text = text.replace(char, f"\\{char}")
+    return text
+
+# Example usage in your query function:
 def query_full_text_index(case_refs):
-    """
-    Query the full-text index for each case reference.
-    case_refs is a list of (case_name, case_year) tuples.
-    We will query up to 5 docs per reference and then filter by year property (±1).
-    Returns a list of doc IDs (integers).
-    """
     doc_ids = []
     with driver.session() as session:
         for (case_name, case_year) in case_refs:
+            # Escape the special characters in the case name
+            escaped_case_name = escape_lucene_special_chars(case_name)
             query = """
             CALL db.index.fulltext.queryNodes("doc_case_title", $search_term, {mode: "PHRASE"}) YIELD node, score
             RETURN node, score
             ORDER BY score DESC
             LIMIT 5
             """
-            result = session.run(query, search_term=case_name)
+            result = session.run(query, search_term=escaped_case_name)
             candidates = [(r['node'], r['node'].get('case_year', -1)) for r in result]
-
-            # Filter by year: keep those whose year == case_year or ±1
             filtered = []
             for (node, y) in candidates:
                 if len(filtered) == 2:
-                    # Already have our maximum of 2
                     break
                 if case_year == -1:
-                    # If we don't have a year for the case reference, accept all
                     filtered.append(node.id)
                 else:
                     if y in [case_year, case_year + 1, case_year - 1]:
                         filtered.append(node.id)
-
             doc_ids.extend(filtered)
-
     return list(set(doc_ids))
+
 
 
 def get_related_docs(main_docs):
@@ -432,8 +442,17 @@ MATCH (d:Document)
 WHERE id(d) IN $document_ids
 OPTIONAL MATCH (d)-[:CITES]->(cited:Document)
 OPTIONAL MATCH (d)<-[:CITES]-(citing:Document)
-WITH COLLECT(DISTINCT d) + COLLECT(DISTINCT cited) + COLLECT(DISTINCT citing) AS docs
-UNWIND docs AS doc
+WITH COLLECT(DISTINCT d) + COLLECT(DISTINCT cited) + COLLECT(DISTINCT citing) AS level1_docs
+
+UNWIND level1_docs AS doc1
+OPTIONAL MATCH (doc1)-[:CITES]->(doc1_cited:Document)
+OPTIONAL MATCH (doc1)<-[:CITES]-(doc1_citing:Document)
+WITH level1_docs, 
+     COLLECT(DISTINCT doc1_cited) AS doc1_cited_list, 
+     COLLECT(DISTINCT doc1_citing) AS doc1_citing_list
+
+WITH level1_docs + doc1_cited_list + doc1_citing_list AS all_docs
+UNWIND all_docs AS doc
 WITH COLLECT(DISTINCT doc) AS all_docs
 RETURN [doc IN all_docs | { id: id(doc), case_title: doc.case_title }] AS all_doc_info
         """
@@ -464,7 +483,7 @@ def query_vector_index(embedding):
     """
     with driver.session() as session:
         query = """
-        CALL db.index.vector.queryNodes('full_summary_vector_idx', 300, $embedding) 
+        CALL db.index.vector.queryNodes('full_summary_vector_idx', 500, $embedding) 
         YIELD node, score
         RETURN id(node) AS id, node.case_title AS case_title
         """
@@ -635,7 +654,7 @@ def get_relevant_cases(all_case_laws_summaries, memo, legal_problem, case_refs):
     case_law_summaries_xml = to_xml_case_law_summaries(all_case_laws_summaries)
 
     prompt = f"""
-You are an advanced legal research assistant AI tasked with analyzing a legal research memo and a legal problem, then selecting the most relevant case laws from a provided set of summaries. Your analysis will be crucial for legal professionals to understand the context and implications of the given legal situation.
+You are an advanced legal research assistant AI tasked with analyzing a legal research memo and a legal Proposition, then selecting the most relevant case laws from a provided set of summaries. Your analysis will be crucial for legal professionals to understand the context and implications of the given legal situation.
 
 Carefully review the following information:
 
@@ -645,11 +664,11 @@ Carefully review the following information:
 {memo}
 </legal_research_memo>
 
-2. Review the provided legal problem:
+2. Review the provided legal Proposition:
 
-<legal_problem>
+<legal_Proposition>
 {legal_problem}
-</legal_problem>
+</legal_Proposition>
 
 3. Review the case titles Mentioned in the Memo:
 <memo_case_titles>
@@ -667,13 +686,13 @@ Carefully review the following information:
 
 Now, follow these steps to analyze the information and select relevant case laws:
 
-1. Analyze the legal research memo and legal problem. Identify key issues, legal principles.
+1. Analyze the legal research memo and legal Proposition. Identify key issues, legal principles.
 
 2. Review the case law summaries and identify the cases mentioned in the memo. Note their corresponding doc_ids, and the most relevant discussion_id from the case law summaries provided.
 
 3. Select additional cases from the summaries, if required. Include cases that offer different perspectives or interpretations, considering both supporting and opposing viewpoints. Ensure that your selection covers the issues and analysis identified in the memo.
 
-4. Select atleast 10 case laws, including those mentioned in the memo. The exact number should be based on the complexity of the legal problem.
+4. Select atleast 10 case laws, including those mentioned in the memo. The exact number should be based on the complexity of the legal Proposition.
 
 5. For each selected case, provide the following information:
    - The doc_id
@@ -687,11 +706,11 @@ Now, follow these steps to analyze the information and select relevant case laws
 7. Double-check that all cases mentioned in the memo are included in your final selection.
 
 Before providing your final output, wrap your analysis in <legal_analysis> tags:
-1. Quote key passages from the memo and legal problem.
+1. Quote key passages from the memo and legal Proposition.
 2. All cases mentioned in the memo with their corresponding doc_ids, and the most relevant discussion_id from the case law summaries provided.
-3. Relevance and Applicability of case law summaries to the memo and legal problem.
+3. Relevance and Applicability of case law summaries to the memo and legal Proposition.
 4. Explain your reasons for selecting case laws, including:
-    - The number of selected case laws based on the complexity of the legal problem.
+    - The number of selected case laws based on the complexity of the legal Proposition.
     - How the selected cases cover issues and analysis from the memo.
     - Your consideration of supporting and opposing viewpoints.
 
@@ -713,12 +732,12 @@ Use the following format for your output:
             [Comprehensive explanation of relevance]
         </relevance>
     </case>
-    <!-- Repeat <case> tags for each selected case law (atleast 10 in total, based on the complexity of the legal problem) -->
+    <!-- Repeat <case> tags for each selected case law (atleast 10 in total, based on the complexity of the legal Proposition) -->
 </selected_case_laws>
 
 <number_of_selected_case_laws>[Number of case laws selected]</number_of_selected_case_laws>
 
-Ensure that your final selection and analysis comprehensively address all aspects of the legal research memo and problem, providing a well-rounded perspective on the legal issues at hand.
+Ensure that your final selection and analysis comprehensively address all aspects of the legal research memo and Proposition, providing a well-rounded perspective on the legal issues at hand.
 """
     
 
@@ -946,20 +965,20 @@ def to_xml_case_law_summaries_with_paragraphs(case_law_summaries):
 def stream_final_memo(memo_box, leg_prob, initial_memo, xml_relevant_cases_summary_with_paragraph, relevant_cases):
     genai.configure(api_key=GEMINI_API_KEY)
 
-    prompt = f"""You are a legal research assistant tasked with analyzing and providing insights on a given legal problem. Your goal is to conduct thorough legal research and present a comprehensive and well-reasoned legal memo that mirrors the depth and precision of professional legal analyses that can assist a legal professional. 
+    prompt = f"""You are a legal research assistant tasked with analyzing and providing insights on a given legal Proposition. Your goal is to conduct thorough legal research and present a comprehensive and well-reasoned legal memo that mirrors the depth and precision of professional legal analyses that can assist a legal professional. 
 
 Follow the steps below meticulously to ensure a comprehensive analysis.
 
-1. **Review the Legal Problem:** Carefully read and understand the provided legal problem to grasp all relevant facts and legal questions.
+1. **Review the Legal Proposition:** Carefully read and understand the provided legal Proposition to grasp all relevant facts and legal questions.
 
-<legal_problem>
+<legal_Proposition>
 {leg_prob}
-</legal_problem>
+</legal_Proposition>
 
 2. Now, follow the legal research methodology outlined below.
 
-a) **Identify the Research Problem:** 
-      - Break down the problem into specific legal questions that need to be addressed.
+a) **Identify the Research Proposition:** 
+      - Break down the Proposition into specific legal questions that need to be addressed.
 
 b) **Collect Legal Sources:** 
       - **Statutes:** Enumerate specific statutes, sections, and legal provisions relevant to each identified issue.
@@ -967,28 +986,28 @@ b) **Collect Legal Sources:**
 
 c) **Synthesize Legal Principles:** 
       - Extract key legal concepts and principles from the collected sources. Provide clear definitions and explanations for each identified principle.
-      - Explain how these principles interrelate and apply to the given problem.
+      - Explain how these principles interrelate and apply to the given Proposition.
       - For each relevant case law, provide a concise summary of the court's ruling, and the rationale behind the decision.
-      - Analyze how the principles established in each case apply to the current legal problem.
+      - Analyze how the principles established in each case apply to the current legal Proposition.
       - Highlight similarities and distinctions between the cases and the present scenario to build a robust legal argument.
       - Develop a coherent understanding of the legal issue by logically connecting the facts to the legal doctrines.
 
 
 Follow these instructions carefully to produce a well-structured and legally sound memo ensuring comprehensive coverage, deep analysis, and clear linkage between facts and legal principles. The memo should provide a thorough examination of each legal issue, supported by relevant statutes, case laws, and clear logical reasoning.
 
-Analyze the problem and research thoroughly. Identify the key legal issues, relevant laws, and applicable precedents. Consider how the facts of the case relate to the legal principles identified in your research.
+Analyze the Proposition and research thoroughly. Identify the key legal issues, relevant laws, and applicable precedents. Consider how the facts of the case relate to the legal principles identified in your research.
 
 Structure your memo using the following outline:
 
 1. Issues Involved
     - List each legal question clearly and succinctly.
-    - Ensure that each issue is directly derived from the legal problem.
+    - Ensure that each issue is directly derived from the legal Proposition.
 
 2. Discussion/Reasoning
 Provide a detailed legal analysis here. This should include:
-    - Clearly explain the relevant legal principles, statutes, and case law. Integrate relevant case laws, summarizing their holdings and applying their principles to the problem at hand.
+    - Clearly explain the relevant legal principles, statutes, and case law. Integrate relevant case laws, summarizing their holdings and applying their principles to the Proposition at hand.
 
-    - Carefully examine how the specific facts or questions presented in the legal problem interact with the legal principles. Demonstrate how the legal principles influence the outcome of each issue based on the provided facts. Provide hypothetical scenarios or counterexamples if necessary to highlight the strengths of your analysis. Explain your reasoning and how these principles lead to potential conclusions or answers.
+    - Carefully examine how the specific facts or questions presented in the legal Proposition interact with the legal principles. Demonstrate how the legal principles influence the outcome of each issue based on the provided facts. Provide hypothetical scenarios or counterexamples if necessary to highlight the strengths of your analysis. Explain your reasoning and how these principles lead to potential conclusions or answers.
 
     - Discuss potential arguments, counterarguments, or alternative interpretations of the law. Where applicable, analyze differing judicial opinions or interpretations related to the legal issues. Critically evaluate these perspectives, explaining why they may or may not apply to the case. Reinforce your conclusions by addressing and refuting opposing viewpoints where applicable.
 
@@ -1031,11 +1050,11 @@ Before finalizing your memo, review and refine your analysis to ensure it aligns
 - **Ensure Accuracy:** Confirm that all legal citations are accurate and correctly applied. Consider whether each argument is supported by relevant legal authorities. Whenever you cite any case laws, include reference to the case law and to the most relevant and applicable discussion section in this format - <<doc_id; case_title; discussion_id>> tag.
 - **Proofread:** Correct any grammatical or typographical errors to maintain professionalism.
 
-Remember to maintain a professional and objective tone throughout your analysis. If you encounter any ambiguities in the legal problem, state your assumptions clearly. Your goal is to provide a comprehensive and well-structured memo that could assist a legal professional in addressing the given problem. Ensure that your memo is comprehensive, well-reasoned, and adheres to professional legal standards. Focus on clarity, logical argumentation, and proper use of legal authorities.
+Remember to maintain a professional and objective tone throughout your analysis. If you encounter any ambiguities in the legal Proposition, state your assumptions clearly. Your goal is to provide a comprehensive and well-structured memo that could assist a legal professional in addressing the given Proposition. Ensure that your memo is comprehensive, well-reasoned, and adheres to professional legal standards. Focus on clarity, logical argumentation, and proper use of legal authorities.
 """
 
     history_msgs = [
-        {"role": "user", "parts": [{"text": f"<legal_problem>{leg_prob}</legal_problem>"}]},
+        {"role": "user", "parts": [{"text": f"<legal_Proposition>{leg_prob}</legal_Proposition>"}]},
         {"role": "model", "parts": [{"text": initial_memo}]},
         {"role": "user", "parts": [{"text": xml_relevant_cases_summary_with_paragraph}]},
         # {"role": "model", "parts": relevance_parts},
@@ -1107,7 +1126,7 @@ def stream_chat(chat_box, query, conversation, xml_relevant_cases_summary_with_p
     model = genai.GenerativeModel(
         model_name="gemini-2.0-flash",
         generation_config=generation_config,
-#         system_instruction="""You are an advanced legal research assistant designed to analyze complex legal problems and provide insightful, professional-grade analysis. Your primary goal is to assist legal professionals by conducting thorough research and offering well-reasoned insights.
+#         system_instruction="""You are an advanced legal research assistant designed to analyze complex legal Propositions and provide insightful, professional-grade analysis. Your primary goal is to assist legal professionals by conducting thorough research and offering well-reasoned insights.
 
 # Whenever you cite any case laws, include reference to the case law and to the most relevant and applicable discussion section in this format - <<doc_id; case_title; discussion_id>> tag.
 
@@ -1119,7 +1138,7 @@ def stream_chat(chat_box, query, conversation, xml_relevant_cases_summary_with_p
 
 # Whenever you cite any case laws, include reference to the case law and to the most relevant and applicable discussion section in this format - <<doc_id; case_title; discussion_id>> tag.
 
-# Remember to maintain a professional and objective tone throughout. Your goal is to assist a legal professional in addressing the legal problem. Focus on clarity, logical argumentation, proper use of legal authorities, and adheres to professional legal standards.
+# Remember to maintain a professional and objective tone throughout. Your goal is to assist a legal professional in addressing the legal Proposition. Focus on clarity, logical argumentation, proper use of legal authorities, and adheres to professional legal standards.
 
 # In every response, Think step-by-step and provide your chain of thought in <thinking> tags. After your thinking, present your final output in <output> tags. Your output should be clear, and directly relevant to assisting a legal professional.
 # """,
