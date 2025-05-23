@@ -2159,7 +2159,7 @@ Complainant
 
 
 # --- Configuration ---
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyAubRNK4o-aJEo2wnCKPVzd9CXMNqUfy3s")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 if GEMINI_API_KEY == "YOUR_GEMINI_API_KEY" and not os.environ.get("GEMINI_API_KEY"):
     app.logger.warning("GEMINI_API_KEY is not set. Please replace 'YOUR_GEMINI_API_KEY' in app.py or set the environment variable.")
 
