@@ -94,3 +94,4 @@ markdown==3.5.1
 gunicorn==21.2.0
 PyPDF2
 python-docx
+google-genai 
